@@ -1,11 +1,12 @@
 import 'content_block.dart';
 import 'exercise.dart';
+import 'game.dart';
 import 'podcast.dart';
 import 'review.dart';
 import 'source.dart';
 
-/// The four ways a learner can work through a lesson.
-enum LessonMode { read, practice, listen, review }
+/// The five ways a learner can work through a lesson.
+enum LessonMode { read, practice, listen, review, play }
 
 /// A single lesson, carrying one payload per [LessonMode].
 class Lesson {
@@ -18,6 +19,7 @@ class Lesson {
     required this.practice,
     required this.podcast,
     required this.review,
+    required this.play,
     required this.sources,
   });
 
@@ -33,6 +35,7 @@ class Lesson {
   final PracticeContent practice;
   final PodcastScript podcast;
   final ReviewContent review;
+  final GameContent play;
 
   final List<Source> sources;
 
@@ -50,5 +53,6 @@ class Lesson {
     LessonMode.practice => practice.exercises.isNotEmpty,
     LessonMode.listen => podcast.variants.isNotEmpty,
     LessonMode.review => review.isNotEmpty,
+    LessonMode.play => play.games.isNotEmpty,
   };
 }

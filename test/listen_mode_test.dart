@@ -35,15 +35,15 @@ void main() {
 
       playback.play();
       await tester.pump(const Duration(seconds: 1));
-      expect(playback.currentTimeMs, 1000);
+      expect(playback.currentTimeMs, 850);
 
       playback.setSpeed(2.0);
       await tester.pump(const Duration(seconds: 1));
-      expect(playback.currentTimeMs, 3000);
+      expect(playback.currentTimeMs, 2850);
 
       playback.pause();
       await tester.pump(const Duration(seconds: 1));
-      expect(playback.currentTimeMs, 3000);
+      expect(playback.currentTimeMs, 2850);
       expect(playback.isPlaying, isFalse);
     });
 
@@ -99,7 +99,7 @@ void main() {
 
       playback.play();
       await tester.pump(const Duration(seconds: 3));
-      expect(playback.currentTimeMs, 3000);
+      expect(playback.currentTimeMs, 2550);
 
       playback.selectVariant(PodcastVariant.concise);
       expect(playback.currentTimeMs, 0);
@@ -244,7 +244,7 @@ void main() {
       expect(find.byTooltip('Previous section'), findsOneWidget);
       expect(find.byTooltip('Next section'), findsOneWidget);
       expect(find.byTooltip('Play'), findsOneWidget);
-      expect(find.text('1.0x'), findsOneWidget);
+      expect(find.text('0.85x'), findsOneWidget);
     });
 
     testWidgets('play runs the clock and pause stops it', (
@@ -260,7 +260,7 @@ void main() {
       expect(
         find.descendant(
           of: find.byType(PodcastPlayer),
-          matching: find.text('0:05'),
+          matching: find.text('0:04'),
         ),
         findsOneWidget,
       );
@@ -269,7 +269,7 @@ void main() {
       await tester.tap(find.byTooltip('Pause'));
       await tester.pumpAndSettle();
       expect(playback.isPlaying, isFalse);
-      expect(playback.currentTimeMs, 5000);
+      expect(playback.currentTimeMs, 4250);
     });
 
     testWidgets('the fixed jumps and the speed picker drive playback', (
@@ -296,7 +296,7 @@ void main() {
         0,
       );
 
-      await tester.tap(find.text('1.0x'));
+      await tester.tap(find.text('0.85x'));
       await tester.pumpAndSettle();
       // The menu overlay sits under a transform the hit-test warning cannot
       // follow; the tap itself lands.
@@ -337,8 +337,8 @@ void main() {
       final double before = tester.getTopLeft(find.text(segments[0].text)).dy;
 
       await tester.tap(find.byTooltip('Play'));
-      // Section 2 starts at 0:24.
-      await tester.pump(const Duration(seconds: 26));
+      // Section 2 starts at 0:24. At 0.85x, need ~30s of clock time.
+      await tester.pump(const Duration(seconds: 30));
       await tester.pumpAndSettle();
       playback.pause();
       await tester.pumpAndSettle();
@@ -446,7 +446,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(playback.isPlaying, isFalse);
-      expect(playback.currentTimeMs, 1000);
+      expect(playback.currentTimeMs, 850);
     });
   });
 }

@@ -1,5 +1,6 @@
 import '../../models/content_block.dart';
 import '../../models/exercise.dart';
+import '../../models/game.dart';
 import '../../models/lesson.dart';
 import '../../models/podcast.dart';
 import '../../models/review.dart';
@@ -17,6 +18,7 @@ const Lesson transformersLesson = Lesson(
   read: _read,
   practice: _practice,
   podcast: _podcast,
+  play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
 );
@@ -816,11 +818,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c1',
           speaker: 'Host',
           text:
-              'Transformers in six minutes. The problem they solved: recurrent '
-              'networks read a sentence one word at a time, so you cannot '
-              'parallelise across the sequence, and information from the start '
-              'has to survive hundreds of hidden-state rewrites to reach the '
-              'end. Both problems get worse as sequences get longer.',
+              'Transformers in six minutes. Picture reading a long email. '
+              'A human skims it — your eye jumps back to the subject line, '
+              'connects "she" on line twelve to "Alice" on line two, and '
+              'understands it all at once. Old recurrent networks could not do '
+              'that. They read one word at a time like someone sounding out '
+              'each syllable, carrying everything they had ever read in '
+              'one tiny memory that got overwritten at every step. Information '
+              'from the first sentence had to survive hundreds of rewrites to '
+              'reach the last — and usually did not.',
           startMs: 0,
           endMs: 40000,
         ),
@@ -828,11 +834,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c2',
           speaker: 'Guest',
           text:
-              'The transformer replaces that with self-attention. Every '
-              'position looks directly at every other position, in one step. '
-              'Any two tokens are one hop apart no matter how far apart they '
-              'are in the text, and the whole sequence becomes one matrix '
-              'multiplication instead of a loop.',
+              'The transformer replaced that with self-attention — every word '
+              'looking directly at every other word at the same time. It is '
+              'like upgrading from a whisper-down-the-lane game to a '
+              'conference call where everyone can hear everyone else '
+              'simultaneously. Any two words become one hop apart, no matter '
+              'how far apart they are in the text. And the entire sequence '
+              'becomes one giant matrix multiplication — exactly the thing '
+              'GPUs are built to do fast.',
           startMs: 40000,
           endMs: 78000,
         ),
@@ -840,11 +849,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c3',
           speaker: 'Host',
           text:
-              'The mechanism is queries, keys and values. Each token projects '
-              'into a query — what am I looking for — and a key — what do I '
-              'offer. Dot the queries against all the keys, divide by the '
-              'square root of the head dimension, softmax each row, and use '
-              'the result to take a weighted average of the value vectors.',
+              'The mechanism is beautifully clean. Each word projects into '
+              'three roles: a query asking "what information do I need?", a '
+              'key advertising "here is what I know", and a value containing '
+              'the actual content to share. Every query checks in with every '
+              'key, gets a compatibility score, and those scores become mixing '
+              'weights for blending the values. It is like each word in a '
+              'sentence walking around the room asking everyone else "do you '
+              'have anything relevant?", then building its understanding from '
+              'the most useful answers.',
           startMs: 78000,
           endMs: 118000,
         ),
@@ -852,12 +865,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c4',
           speaker: 'Guest',
           text:
-              'Multi-head just runs that several times in parallel with '
-              'different learned projections, so one head can track syntax '
-              'while another tracks which noun a pronoun refers to. The model '
-              'dimension is split across heads rather than multiplied, so it '
-              'costs about the same and then a final projection mixes the '
-              'heads back together.',
+              'Multi-head just runs several of these conversations in parallel '
+              'with different question styles. One head might track grammar — '
+              '"what\'s the subject of this verb?" — while another resolves '
+              'pronouns — "who does \'she\' refer to?" — and another just '
+              'looks at the previous word. You split the model dimension across '
+              'heads rather than multiplying it, so the cost stays the same, '
+              'then merge everything back together with one final projection.',
           startMs: 118000,
           endMs: 158000,
         ),
@@ -865,12 +879,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c5',
           speaker: 'Host',
           text:
-              'One catch: attention has no sense of order at all. It is a set '
-              'operation, so without help "dog bites man" and "man bites dog" '
-              'look the same. Positional encoding fixes that by adding a '
-              'position-dependent pattern to the embeddings before the first '
-              'layer — sinusoids at different frequencies in the original '
-              'paper.',
+              'One catch: attention has no clue about word order. It treats '
+              'the sentence like a bag of words. "The dog bit the man" and '
+              '"the man bit the dog" look identical to pure attention. '
+              'Positional encoding fixes this by stamping each word with a '
+              'unique pattern based on where it sits — like giving every word '
+              'a different-sounding chime when it enters the room. The '
+              'original paper used sine waves at different frequencies, and '
+              'modern models mostly use rotary encodings that care about '
+              'relative distances between words rather than absolute slot '
+              'numbers.',
           startMs: 158000,
           endMs: 198000,
         ),
@@ -878,11 +896,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c6',
           speaker: 'Guest',
           text:
-              'And one thing to carry forward. Every pair of positions gets a '
-              'score, so cost grows with the square of sequence length. That '
-              'quadratic term is why long context was a hard research problem '
-              'rather than a setting you turn up, and it is behind almost '
-              'every efficiency trick you will meet later.',
+              'And one cost to carry forward: every pair of words computes a '
+              'score, so attention is quadratic in sequence length. Double the '
+              'context and you quadruple the work. That single fact is why '
+              'long context windows were a research problem for years rather '
+              'than just a setting you turned up. FlashAttention, sparse '
+              'patterns, and clever approximations all attack this same '
+              'quadratic wall from different angles.',
           startMs: 198000,
           endMs: 234000,
         ),
@@ -896,12 +916,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's1',
           speaker: 'Host',
           text:
-              'Let us start with what was actually wrong with recurrent '
-              'models, because the transformer is a direct answer to it. An '
-              'LSTM keeps one hidden state and rewrites it at every token. '
-              'That is the model\'s entire memory, a fixed-size vector, '
-              'overwritten hundreds of times across a paragraph. Everything '
-              'that survives has to survive all of those rewrites.',
+              'Let us start with what was actually painful about the old way. '
+              'Imagine trying to understand a novel by reading it one word at '
+              'a time, keeping a single sticky note as your only memory. Every '
+              'time you read a new word, you have to throw away the old note '
+              'and write a new summary that somehow captures everything you '
+              'have read so far. By chapter ten, that sticky note is a mess. '
+              'That is exactly how recurrent networks worked — one hidden '
+              'state, overwritten at every token, asked to carry the meaning '
+              'of an entire paragraph.',
           startMs: 0,
           endMs: 58000,
         ),
@@ -909,13 +932,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's2',
           speaker: 'Guest',
           text:
-              'And the sequential dependency is the other half. Step forty '
-              'cannot start until step thirty-nine finishes, so you cannot use '
-              'the parallelism a GPU is built for. Attention had already been '
-              'invented as an add-on to those models — let the decoder look '
-              'back at all the encoder states. The transformer paper asked '
-              'what happens if you keep the attention and throw the recurrence '
-              'away entirely.',
+              'And the sequential bottleneck was arguably worse for practical '
+              'use. Step forty cannot start until step thirty-nine finishes, '
+              'so your expensive GPU with thousands of parallel cores sits '
+              'mostly idle, processing one word at a time like a typist from '
+              'the 1950s. Attention had already been invented as a band-aid '
+              'for this — let the decoder peek back at all the encoder\'s '
+              'hidden states instead of relying on one summary. The '
+              'transformer paper asked the obvious next question: what if we '
+              'throw away the recurrence entirely and keep only the peeking?',
           startMs: 58000,
           endMs: 122000,
         ),
@@ -923,12 +948,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 's3',
           speaker: 'Host',
           text:
-              'Intuition first. Take "the animal did not cross the street '
-              'because it was too tired". To work out what "it" means you look '
-              'at the other words and weight them by relevance: animal a lot, '
-              'street a little. That is attention. Each position produces a '
-              'weighted average over all positions, and crucially the weights '
-              'come from the content, computed fresh for every input.',
+              'Intuition first, with the classic example. "The animal did not '
+              'cross the street because it was too tired." What is "it"? Your '
+              'brain instantly connects "tired" to "animal" — streets do not '
+              'get tired. You just did attention: you looked at every word in '
+              'the sentence, weighted them by relevance, and built your '
+              'understanding from the most relevant ones. That is exactly what '
+              'self-attention computes — a weighted blend of every word\'s '
+              'meaning, with weights determined fresh for each input.',
           startMs: 122000,
           endMs: 186000,
         ),
@@ -936,12 +963,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 's4',
           speaker: 'Guest',
           text:
-              'Mechanically it is three learned projections per token. The '
-              'query is what this token is looking for. The key is what it '
-              'advertises. The value is what it hands over when someone '
-              'attends to it. Query dot key gives a compatibility score for '
-              'every ordered pair; softmax each row into weights; multiply by '
-              'the values. Four matrix operations and you have self-attention.',
+              'Mechanically, three learned projections per word. The query '
+              'asks "what am I looking for?" The key advertises "here is what '
+              'I know." The value is the payload — the actual content handed '
+              'over when someone attends to you. Query dot key gives a '
+              'compatibility score for every pair of words. Softmax turns '
+              'those scores into mixing weights that sum to one. Multiply by '
+              'the values. Four matrix operations and you have self-attention. '
+              'The whole thing fits in a few lines of NumPy.',
           startMs: 186000,
           endMs: 252000,
         ),
@@ -949,13 +978,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's5',
           speaker: 'Host',
           text:
-              'The scaling factor deserves a mention because it looks like a '
-              'detail and is not. Dot products in a d-dimensional space have '
-              'variance proportional to d, so in a wide head the raw scores '
-              'get large, softmax saturates into nearly one-hot, and the '
-              'gradient through it goes flat. Dividing by the square root of '
-              'the key dimension keeps the scores in the range where softmax '
-              'still learns.',
+              'The scaling factor by the square root of the key dimension '
+              'looks like a minor detail. It is not. In a 64-dimensional '
+              'attention head, the raw dot products routinely spread across '
+              '±8 or more. Softmax on that range becomes nearly one-hot — '
+              'one word gets almost all the weight, the rest get almost zero, '
+              'and the gradient through the softmax vanishes. Dividing by '
+              '√64 = 8 keeps scores in the range where attention is '
+              'genuinely distributed and gradients flow. One square root '
+              'separates a trainable layer from a broken one.',
           startMs: 252000,
           endMs: 316000,
         ),
@@ -963,13 +994,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's6',
           speaker: 'Guest',
           text:
-              'Then multi-head. One attention pattern per position is not '
-              'enough, because a token often needs to attend to different '
-              'things for different reasons at once. So run several in '
-              'parallel with independent projections. Important detail: with '
-              'model dimension 512 and eight heads, each head is 64 '
-              'dimensions. You split the width, you do not multiply it. '
-              'Concatenate, project once more, done.',
+              'Then multi-head. One attention pattern per word is not enough. '
+              'A pronoun like "it" needs to attend to "animal" for meaning and '
+              'to "was" for grammar at the same time. One softmax distribution '
+              'cannot peak in two places without blurring both. Run several '
+              'attention operations in parallel with independent projections. '
+              'With 512 model dimensions and 8 heads, each head works in 64 '
+              'dimensions — you split the width, you do not multiply it. '
+              'Concatenate the head outputs back together and project once '
+              'more.',
           startMs: 316000,
           endMs: 378000,
         ),
@@ -977,13 +1010,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's7',
           speaker: 'Host',
           text:
-              'Now the thing everyone forgets. Attention is permutation-'
-              'equivariant — it is a set operation. Shuffle the tokens and you '
-              'get the same representations shuffled. So order has to be '
-              'injected explicitly. The original paper added sinusoids at '
-              'geometrically spaced frequencies: fast-changing dimensions '
-              'distinguish neighbours, slow ones distinguish distant regions, '
-              'a bit like a continuous binary counter.',
+              'Now the thing everyone forgets: attention does not know word '
+              'order at all. Shuffle the input sentence and you get the same '
+              'output vectors, just shuffled. "The dog bit the man" and "the '
+              'man bit the dog" are identical to pure attention. Positional '
+              'encoding stamps each word with where it sits — the original '
+              'paper used sine waves at geometrically spaced frequencies, '
+              'like a continuous binary counter. Fast-changing dimensions '
+              'distinguish neighbours; slow ones tell position 5 from '
+              'position 5000.',
           startMs: 378000,
           endMs: 440000,
         ),
@@ -991,12 +1026,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 's8',
           speaker: 'Guest',
           text:
-              'Worth knowing that practice has moved on: rotary embeddings and '
-              'ALiBi encode relative offsets rather than absolute positions '
-              'and extrapolate to longer contexts much better. But the '
-              'principle is unchanged. Attention gives you content-based '
-              'routing with no notion of order, and something else has to '
-              'supply the order.',
+              'Practice has moved on: rotary embeddings (RoPE) and ALiBi '
+              'encode the distance between two words rather than their '
+              'absolute position, and they extrapolate to longer contexts '
+              'far better. But the principle is unchanged. Attention gives '
+              'you content-based routing with zero notion of sequence. '
+              'Something else has to inject the order. That something is '
+              'positional encoding, in one form or another, and it is added '
+              'before the very first attention layer touches anything.',
           startMs: 440000,
           endMs: 498000,
         ),
@@ -1010,11 +1047,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd1',
           speaker: 'Host',
           text:
-              'Long form on transformers. The route: why recurrence had to go, '
-              'what attention actually computes, queries keys and values in '
-              'detail, why the scaling factor matters, what multiple heads buy '
-              'you, how order gets injected, the three architectural families, '
-              'and the quadratic cost that shapes everything downstream.',
+              'Deep dive on transformers. Picture trying to coordinate a '
+              'conversation where every speaker can look at every other speaker '
+              'simultaneously, deciding in real time who has the most relevant '
+              'thing to say. That is self-attention, and in the next forty '
+              'minutes we will walk through why recurrence had to go, the '
+              'mechanism of attention in full detail, multi-head parallelism, '
+              'positional encoding, the three architectural families, and the '
+              'quadratic cost that has shaped every efficiency innovation.',
           startMs: 0,
           endMs: 62000,
         ),
@@ -1022,13 +1062,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd2',
           speaker: 'Guest',
           text:
-              'Start with the failure. A recurrent network compresses '
-              'everything it has read into one hidden vector and rewrites that '
-              'vector at every token. Gates in an LSTM slow the forgetting but '
-              'do not stop it, and the gradient from a late token back to an '
-              'early one travels through every intermediate step, so it decays '
-              'multiplicatively. Long-range dependencies are learnable in '
-              'principle and painful in practice.',
+              'Start with the failure of recurrence. An LSTM compresses '
+              'everything it has read into one hidden vector and overwrites '
+              'that vector at every single token. It is like writing your '
+              'entire life story on one Post-it note, erasing and rewriting it '
+              'thousands of times. The gates in an LSTM slow the forgetting '
+              'but do not stop it. And gradients travelling from a late word '
+              'back to an early one must pass through every intermediate '
+              'computation — each one multiplying the signal by some number '
+              'less than one. After a few hundred steps, the gradient reaching '
+              'the early layers is effectively zero.',
           startMs: 62000,
           endMs: 136000,
         ),
@@ -1036,13 +1079,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd3',
           speaker: 'Host',
           text:
-              'And the parallelism problem is arguably the bigger one '
-              'commercially. Sequential computation means your accelerator is '
-              'idle most of the time. When the transformer made a full '
-              'training sequence into one batch of matrix multiplications, it '
-              'did not just improve quality — it changed the economics of '
-              'scale, and that is why models grew by orders of magnitude in '
-              'the years that followed.',
+              'And the parallelism problem is arguably the bigger one for '
+              'practical impact. Sequential computation means your GPU with '
+              'thousands of cores runs like a single-file queue. When the '
+              'transformer turned an entire training sequence into one giant '
+              'batch of matrix multiplications, it did not just improve model '
+              'quality. It changed the economics of scale. Training that used '
+              'to be limited by wall-clock time became limited by how much '
+              'compute you could afford to throw at it. That economic shift '
+              'is why models grew by orders of magnitude in the years after '
+              '2017.',
           startMs: 136000,
           endMs: 212000,
         ),
@@ -1050,13 +1096,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd4',
           speaker: 'Guest',
           text:
-              'Attention itself: for each position, a weighted average over '
-              'all positions, with weights computed from the vectors '
-              'themselves. The retrieval metaphor is genuinely useful. The '
-              'query says what I am looking for, the key says what I have, the '
-              'value is what gets passed along. Three separate learned '
-              'projections from the same input, which is precisely what lets a '
-              'token advertise something different from what it seeks.',
+              'Attention itself: for each word, a weighted average of every '
+              'word, with weights computed from the vectors themselves. The '
+              'retrieval metaphor is the clearest frame. Each word emits a '
+              'query — "here is what I need to know." Each word also emits a '
+              'key — "here is what I can tell you." And a value — "here is '
+              'the actual content I will share." Three separate learned '
+              'projections from the same input vector. That separation is '
+              'crucial: it lets a word advertise something completely '
+              'different from what it is looking for. A pronoun needs its '
+              'antecedent far more than the antecedent needs the pronoun.',
           startMs: 212000,
           endMs: 286000,
         ),
@@ -1064,13 +1113,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd5',
           speaker: 'Host',
           text:
-              'Read the weight matrix as a directed graph over tokens. Row i, '
-              'column j is how much token i draws from token j. It is not '
-              'symmetric once the projections are learned, and that asymmetry '
-              'is the point: a pronoun needs its antecedent far more than the '
-              'antecedent needs the pronoun. Each row is a probability '
-              'distribution, so every token is spending a fixed attention '
-              'budget.',
+              'Read the attention weight matrix as a directed graph over '
+              'words. Row i, column j tells you how much word i draws from '
+              'word j. It is not symmetric once the projections are learned — '
+              'and that asymmetry is exactly the point. Each row sums to one: '
+              'every word has a fixed attention budget to spend across the '
+              'sequence. A word cannot pay more attention overall; it can only '
+              'redistribute where it focuses. That budget constraint is built '
+              'into the softmax.',
           startMs: 286000,
           endMs: 360000,
         ),
@@ -1079,12 +1129,14 @@ const PodcastScript _podcast = PodcastScript(
           speaker: 'Guest',
           text:
               'On scaling: dot products of independent unit-variance vectors '
-              'have variance equal to the dimension. At 64 dimensions the raw '
-              'scores routinely hit plus or minus eight, softmax pushes almost '
-              'all the mass onto one key, and the derivative goes to zero '
-              'there. Divide by the square root of the key dimension and the '
-              'variance returns to about one regardless of head width. It is '
-              'one square root that keeps the layer trainable.',
+              'have variance equal to the dimension. In a 64-dimensional '
+              'attention head, raw scores routinely hit ±8. Softmax on ±8 '
+              'pushes nearly all probability mass onto one key — the output '
+              'becomes a copy of one value vector, and the gradient through '
+              'the softmax collapses. Divide by √d_k and the score variance '
+              'returns to about one regardless of head width. One square root '
+              'stands between a layer that trains and a layer that stares '
+              'blankly at one word.',
           startMs: 360000,
           endMs: 432000,
         ),
@@ -1092,13 +1144,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd7',
           speaker: 'Host',
           text:
-              'Multi-head. One softmax distribution cannot peak in two places '
-              'without blurring both, but a token frequently needs several '
-              'kinds of context at once — grammatical agreement, coreference, '
-              'the previous token. Independent projections per head give each '
-              'head its own similarity metric. Probing work finds heads that '
-              'specialise fairly cleanly, and also finds many heads that can '
-              'be pruned with almost no loss.',
+              'Multi-head: one softmax distribution cannot peak in two places '
+              'without blurring both. But a word frequently needs several '
+              'kinds of context at once — grammatical agreement with the verb, '
+              'coreference with the noun, proximity to the previous word. '
+              'Independent projections per head give each head its own '
+              'similarity metric over the same tokens. Probing studies confirm '
+              'heads do specialise — some track syntax, some track entities, '
+              'some just attend to the previous token. And many heads do '
+              'almost nothing and can be pruned away with no loss.',
           startMs: 432000,
           endMs: 506000,
         ),
@@ -1106,13 +1160,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd8',
           speaker: 'Guest',
           text:
-              'Positional encoding closes the gap. Attention is a set '
-              'operation, full stop, so the architecture has literally no idea '
-              'what order the tokens arrived in. Sinusoids at geometrically '
-              'spaced frequencies solve it elegantly: the encoding of position '
-              'p plus k is a fixed linear transform of the encoding of '
-              'position p, so relative offsets are learnable, and the scheme '
-              'is parameter-free and defined for every integer.',
+              'Positional encoding closes the gap between a set operation and '
+              'a sequence model. Pure attention treats the input as an '
+              'unordered bag — "dog bites man" and "man bites dog" are '
+              'identical. Sinusoidal encoding at geometrically spaced '
+              'frequencies solves this elegantly: fast-changing dimensions '
+              'tell words apart locally, slow-changing ones distinguish '
+              'distant positions like a continuous counter. And the key '
+              'property: the encoding at position p+k is a fixed linear '
+              'transform of the encoding at position p, so the model can '
+              'learn to recognise relative offsets.',
           startMs: 506000,
           endMs: 580000,
         ),
@@ -1120,12 +1177,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd9',
           speaker: 'Host',
           text:
-              'Now the three families. Encoder-only, which is BERT: '
-              'bidirectional self-attention everywhere, trained by masking '
-              'tokens and predicting them, brilliant representations, cannot '
-              'generate — because if you can see the next token, predicting it '
-              'is not a task. Classification, entity extraction, retrieval '
-              'embeddings and reranking are where these still win.',
+              'Three architectural families. Encoder-only — BERT — uses '
+              'bidirectional attention everywhere, trained by masking tokens '
+              'and predicting them from both sides. Brilliant for '
+              'understanding, cannot generate — because if you can look at '
+              'the next word, predicting it is not a task. Classification, '
+              'entity extraction, retrieval, and reranking are where these '
+              'still dominate.',
           startMs: 580000,
           endMs: 652000,
         ),
@@ -1133,13 +1191,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd10',
           speaker: 'Guest',
           text:
-              'Decoder-only, which is GPT and effectively every current large '
-              'language model: one stack with a causal mask, an '
-              'upper-triangular block of negative infinity added to the scores '
-              'before the softmax so position i sees only up to i. That single '
-              'constraint makes it autoregressive and simultaneously makes '
-              'training efficient, since one pass gives you a next-token '
-              'prediction at every position at once.',
+              'Decoder-only — GPT and essentially every modern LLM — keeps '
+              'one stack with a causal mask: an upper-triangular block of '
+              'negative infinity added to scores before softmax, so word i '
+              'can only see words up to i. That single constraint makes it '
+              'autoregressive — generating one token at a time — and '
+              'simultaneously makes training efficient, since one forward pass '
+              'gives a next-token prediction at every position at once. The '
+              'mask is what separates a language model from a cheating '
+              'document reader.',
           startMs: 652000,
           endMs: 726000,
         ),
@@ -1147,13 +1207,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd11',
           speaker: 'Host',
           text:
-              'And encoder-decoder, the original design, which survives where '
-              'input and output are genuinely different sequences — '
-              'translation, summarisation, transcription. The decoder uses '
-              'cross-attention: queries from the target, keys and values from '
-              'the encoded source. That is the distinction people muddle. '
-              'Self-attention is a sequence looking at itself; cross-attention '
-              'is one sequence looking at another.',
+              'Encoder-decoder — the original design — survives where input '
+              'and output are genuinely different sequences: translation, '
+              'summarisation, speech transcription. The decoder uses '
+              'cross-attention instead of self-attention: queries come from '
+              'the target side, keys and values from the encoded source. '
+              'Self-attention is a sequence looking at itself. Cross-attention '
+              'is one sequence looking at another. Same mechanism, different '
+              'wiring, and that distinction is what people most often muddle.',
           startMs: 726000,
           endMs: 800000,
         ),
@@ -1161,14 +1222,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd12',
           speaker: 'Guest',
           text:
-              'Close on the cost. Every pair of positions gets a score, so '
-              'attention is quadratic in sequence length — double the context '
-              'and you quadruple the work. FlashAttention removes the memory '
-              'blow-up by never writing the full matrix out, and sparse, '
-              'sliding-window and linear variants chip at the compute. But the '
-              'quadratic term is the single constraint that has shaped '
-              'long-context research since 2017, and it is worth carrying into '
-              'every later lesson.',
+              'Close on the cost. Every pair of words computes a score, so '
+              'attention is quadratic in sequence length. Double the context '
+              'and you quadruple the compute and memory. FlashAttention '
+              'removes the memory blow-up by never materialising the full '
+              'N×N matrix. Sparse, sliding-window, and linear-attention '
+              'variants chip away at the compute. But the quadratic term is '
+              'the single constraint that has shaped long-context research '
+              'since 2017. Carry it forward into every later lesson: the '
+              'transformer\'s greatest strength — direct access between any '
+              'two positions — is also its greatest cost.',
           startMs: 800000,
           endMs: 868000,
         ),

@@ -240,6 +240,7 @@ void main() {
         read: sampleLesson.read,
         practice: sampleLesson.practice,
         podcast: sampleLesson.podcast,
+        play: sampleLesson.play,
         review: sampleLesson.review,
         sources: const <Source>[],
       );

@@ -1,5 +1,6 @@
 import '../models/content_block.dart';
 import '../models/exercise.dart';
+import '../models/game.dart';
 import '../models/lesson.dart';
 import '../models/podcast.dart';
 import '../models/review.dart';
@@ -17,6 +18,7 @@ const Lesson sampleLesson = Lesson(
   read: _read,
   practice: _practice,
   podcast: _podcast,
+  play: _play,
   review: _review,
   sources: _sources,
 );
@@ -269,6 +271,91 @@ print(updated)    # [90, 85, 77]
   ],
 );
 
+const GameContent _play = GameContent(
+  games: [
+    TermMatchGame(
+      id: 'game-variables-terms',
+      title: 'Match the vocabulary',
+      instructions: 'Tap a term, then tap its definition.',
+      pairs: [
+        TermPair(
+          term: 'Binding',
+          definition: 'Associating a name in a namespace with an object.',
+        ),
+        TermPair(
+          term: 'Aliasing',
+          definition: 'Two or more names referring to the same object.',
+        ),
+        TermPair(
+          term: 'Immutability',
+          definition: 'A property of objects that cannot change after construction.',
+        ),
+        TermPair(
+          term: 'Hashability',
+          definition: 'Having a stable hash value, so an object can be a dict key.',
+        ),
+      ],
+    ),
+    OutputPredictorGame(
+      id: 'game-variables-aliasing-output',
+      title: 'What does this print?',
+      instructions: 'Pick what the last line prints.',
+      code: '''
+a = [1, 2, 3]
+b = a
+b.append(4)
+print(a)
+''',
+      options: ['[1, 2, 3]', '[1, 2, 3, 4]', '[4, 1, 2, 3]', 'TypeError'],
+      correctIndex: 1,
+      explanation:
+          'b = a binds a second name to the same list object — nothing is '
+          'copied. Appending through b mutates that one shared list, so a '
+          'sees the extra element too.',
+    ),
+    FillBlankGame(
+      id: 'game-variables-isinstance',
+      title: 'Check the type safely',
+      instructions: 'Type the missing function name.',
+      code: '''
+is_ready = True
+print(______(is_ready, int))   # True: bool subclasses int
+''',
+      blanks: [Blank(answer: 'isinstance', hint: 'built-in function')],
+    ),
+    BugHuntGame(
+      id: 'game-variables-shared-list-bug',
+      title: 'Find the leaking mutation',
+      instructions: 'Tap the line that mutates the caller\'s list by mistake.',
+      code: '''
+def add_score(scores, score):
+    scores.append(score)
+    return scores
+
+
+original = [90, 85]
+updated = add_score(original, 77)
+print(original)
+''',
+      buggyLine: 2,
+      explanation:
+          'scores.append(score) mutates the very list the caller passed in — '
+          'scores and original name the same object. Build a new list '
+          'instead: return [*scores, score].',
+      fixedCode: '''
+def add_score(scores, score):
+    return [*scores, score]
+
+
+original = [90, 85]
+updated = add_score(original, 77)
+print(original)   # [90, 85]
+print(updated)    # [90, 85, 77]
+''',
+    ),
+  ],
+);
+
 const PodcastScript _podcast = PodcastScript(
   variants: {
     PodcastVariant.concise: ScriptVariant(
@@ -279,8 +366,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c1',
           speaker: 'Host',
           text:
-              'Ninety seconds on Python variables. The one idea to take away: '
-              'a variable is a name, not a box.',
+              'Ninety seconds on Python variables — and here\'s the big idea. '
+              'Imagine you have a sticky note with "42" on it. '
+              'You can move that sticky note from your monitor to your fridge — '
+              'the note stays the same, you\'re just changing where it lives. '
+              'That\'s exactly how Python variables work: they\'re labels, not boxes.',
           startMs: 0,
           endMs: 16000,
         ),
@@ -288,9 +378,10 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c2',
           speaker: 'Guest',
           text:
-              'Right. Assignment binds a name to an object that already '
-              'exists on the heap. Nothing is copied, and the name itself has '
-              'no type — the object does.',
+              'Exactly. When you say x equals 5, Python creates the number 5 somewhere in memory, '
+              'then sticks the label "x" on it. The label has no type — it\'s just a name. '
+              'The number 5 is what knows it\'s an integer. '
+              'And if you later point x at a string, no problem — you just moved the label.',
           startMs: 16000,
           endMs: 38000,
         ),
@@ -298,8 +389,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c3',
           speaker: 'Host',
           text:
-              'The built-ins worth memorising are int, float, str, bool and '
-              'None, plus the containers: list, tuple, dict and set.',
+              'Here are the types you\'ll actually use every day. Numbers: int for whole numbers, float for decimals. '
+              'Text: str. True or False: bool. "There\'s nothing here": None. '
+              'Then the containers — list, tuple, dict, and set. '
+              'Think of them like kitchen storage: list is a drawer you can rearrange, '
+              'dict is a labelled cabinet, set is a bowl that won\'t hold duplicates.',
           startMs: 38000,
           endMs: 60000,
         ),
@@ -307,16 +401,19 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c4',
           speaker: 'Guest',
           text:
-              'And sort them by mutability. Strings and tuples are immutable, '
-              'lists and dicts are not. That single distinction explains most '
-              'surprises beginners hit.',
+              'And here\'s the key that unlocks almost all confusion: mutability. '
+              'Some things you can change after creating them — lists and dicts are like a whiteboard. '
+              'Others are set in stone — strings and tuples are more like a printed book. '
+              'Once you know which is which, most Python surprises just disappear.',
           startMs: 60000,
           endMs: 84000,
         ),
         PodcastSegment(
           id: 'c5',
           speaker: 'Host',
-          text: 'Names bind, objects have types, mutability decides. Done.',
+          text: 'So remember: names are sticky notes, objects know their own types, '
+              'and mutability tells you what can change and what can\'t. '
+              'That\'s it — you\'ve got the foundation everything else builds on.',
           startMs: 84000,
           endMs: 96000,
         ),
@@ -330,9 +427,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 's1',
           speaker: 'Host',
           text:
-              'Welcome back. Today: variables and data types in Python. It '
-              'looks like the easiest topic in the language, and it is the one '
-              'that quietly causes the most bugs six months later.',
+              'Welcome back! Today we\'re talking about something that seems almost too simple: '
+              'variables and data types. You know, it\'s like learning to walk — '
+              'everyone assumes they already know how, '
+              'but if your footing is slightly off, you\'ll stumble months later '
+              'and have no idea why. Trust me, this one\'s worth the attention.',
           startMs: 0,
           endMs: 24000,
         ),
@@ -340,10 +439,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 's2',
           speaker: 'Guest',
           text:
-              'Because people carry over a mental model from C or Java. There, '
-              'a variable is storage of a declared type and assignment copies '
-              'bytes into it. In Python the object lives on the heap and the '
-              'variable is a label you stick on it.',
+              'Most of us come in carrying mental baggage from other languages. '
+              'In Java or C, a variable is like a parking space — it has a fixed size, '
+              'a specific type, and when you assign, you\'re copying a car into that spot. '
+              'Python is completely different. The value lives wherever it wants in memory, '
+              'and the variable? It\'s just a sticky note you slap on it. '
+              'No copying, no fixed size, no type on the label.',
           startMs: 24000,
           endMs: 56000,
         ),
@@ -351,9 +452,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 's3',
           speaker: 'Host',
           text:
-              'Which is why you can write count equals forty-two, then count '
-              'equals the string "forty-two", and Python does not complain. '
-              'You moved the label; you did not change a box.',
+              'And this is where it gets fun. You can write count equals 42, '
+              'then literally the next line write count equals "forty-two" as a string, '
+              'and Python just nods. No complaints, no type errors. '
+              'Because you didn\'t change what\'s inside count — you just peeled the label off one object '
+              'and stuck it on another. Totally different from a language that would scream at you.',
           startMs: 56000,
           endMs: 86000,
         ),
@@ -361,10 +464,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 's4',
           speaker: 'Guest',
           text:
-              'The flip side is aliasing. If b equals a, and a is a list, both '
-              'names point at one list. Append through b and a sees it. That '
-              'is not a bug in Python, it is the direct consequence of names '
-              'binding rather than copying.',
+              'But here\'s the catch — and it\'s bitten every Python programmer at least once. '
+              'Say you have a shopping list taped to your fridge, '
+              'and you tell your roommate "hey, the list is on the fridge." '
+              'If your roommate adds "ice cream" — you both see it, because there\'s only one list. '
+              'That\'s aliasing. b equals a doesn\'t make a copy; '
+              'it just gives the same object a second name.',
           startMs: 86000,
           endMs: 124000,
         ),
@@ -372,11 +477,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 's5',
           speaker: 'Host',
           text:
-              'Let us do the type tour. int is arbitrary precision, so no '
-              'overflow. float is a normal IEEE double, with all the usual '
-              'rounding surprises. str is immutable Unicode text. bool is '
-              'True and False, and it is technically a subclass of int. None '
-              'is the single value meaning "nothing here".',
+              'Alright, quick tour of the type family. int is your whole number — '
+              'and unlike some languages, it\'ll never overflow no matter how big it gets. '
+              'float handles decimals, but fair warning: it uses binary under the hood, '
+              'so 0.1 plus 0.2 isn\'t exactly 0.3. str is text, always Unicode, never changes after creation. '
+              'bool is just True and False — fun fact, it\'s actually a subclass of int, '
+              'so True is really 1 wearing a fancy hat. And None? '
+              'That\'s the polite way of saying "nothing here, move along."',
           startMs: 124000,
           endMs: 168000,
         ),
@@ -384,11 +491,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 's6',
           speaker: 'Guest',
           text:
-              'Then the containers. list is ordered and mutable, tuple is '
-              'ordered and immutable, dict maps keys to values, and set holds '
-              'unique members. Keys and set members must be hashable, which in '
-              'practice means immutable — that is why a tuple can be a key and '
-              'a list cannot.',
+              'Now the containers — think of them as different ways to organize a desk. '
+              'A list is like a stack of papers you can shuffle, add to, or remove from. '
+              'A tuple is like a museum display — once it\'s set, nothing moves. '
+              'A dict is your filing cabinet: every folder has a label, and you go straight to it. '
+              'A set is like a guest list at a club — no duplicates allowed, '
+              'and checking who\'s inside is lightning fast. '
+              'Oh, and dict keys and set items need to be hashable — which mostly just means immutable. '
+              'That\'s why a tuple can be a key but a list can\'t.',
           startMs: 168000,
           endMs: 214000,
         ),
@@ -396,9 +506,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 's7',
           speaker: 'Host',
           text:
-              'So the checklist: what object does this name point at, what '
-              'type is that object, and can anyone else mutate it. Answer '
-              'those three and Python stops being surprising.',
+              'So here\'s your mental checklist for any Python variable you encounter: '
+              'One — what actual object is this name pointing at right now? '
+              'Two — what type is that object? '
+              'Three — can someone else change it out from under me? '
+              'Answer those three questions and Python goes from mysterious to predictable overnight.',
           startMs: 214000,
           endMs: 258000,
         ),
@@ -412,9 +524,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd1',
           speaker: 'Host',
           text:
-              'This is the long version, so we are going below the surface: '
-              'reference semantics, the object model, and the places where '
-              'CPython implementation details leak into code you will write.',
+              'Welcome to the deep dive! We\'re going under the hood today — '
+              'reference semantics, Python\'s object model, and those sneaky CPython details '
+              'that quietly affect code you\'ll actually write. '
+              'Think of this as the factory tour — you\'ll see how the machinery works, '
+              'so when it makes a funny noise, you\'ll know exactly why.',
           startMs: 0,
           endMs: 32000,
         ),
@@ -422,11 +536,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd2',
           speaker: 'Guest',
           text:
-              'Start with the object header. Every Python object carries a '
-              'type pointer and a reference count. A name in a scope is an '
-              'entry in a namespace dictionary, or a slot in a function frame, '
-              'holding a pointer to that object. Assignment writes the '
-              'pointer and bumps the count.',
+              'Let\'s start at the very bottom. Every single Python object — even the number 1 — '
+              'has a tiny ID card attached to it: a type pointer saying "I\'m an int" '
+              'and a reference count tracking how many names are pointing at it. '
+              'When you assign a variable, you\'re not copying data — you\'re just '
+              'writing a pointer in a namespace and bumping that counter by one. '
+              'It\'s like a coat check system: the object is the coat, '
+              'the variable is the claim ticket.',
           startMs: 32000,
           endMs: 78000,
         ),
@@ -434,12 +550,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd3',
           speaker: 'Host',
           text:
-              'That explains the identity operator. "is" compares pointers, '
-              'while "==" calls __eq__. Beginners hit this when small integers '
-              'and short strings appear to be identical objects — CPython '
-              'caches ints from minus five to two hundred fifty six and '
-              'interns some strings. Never rely on it; compare with == unless '
-              'you genuinely mean identity, as with None.',
+              'This sets up one of the classic gotchas: "is" versus double equals. '
+              '"is" asks "are these the exact same coat check ticket?" — it compares memory addresses. '
+              'Double equals asks "do these coats look the same?" — it calls the __eq__ method. '
+              'Here\'s where it gets tricky: CPython recycles small integers from -5 to 256, '
+              'and sometimes interns short strings. So "a is b" might accidentally be True '
+              'when they\'re small numbers, and False when they\'re big ones. '
+              'The rule: only use "is" for None, and use double equals for everything else.',
           startMs: 78000,
           endMs: 138000,
         ),
@@ -447,11 +564,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd4',
           speaker: 'Guest',
           text:
-              'Mutability deserves the same depth. An immutable object can be '
-              'shared freely because nobody can change it underneath you. That '
-              'is what makes hashing safe: hash values must stay stable for '
-              'the lifetime of a dict key. Mutate a key in place and you '
-              'corrupt the table — which is exactly why list is unhashable.',
+              'Let\'s dig deeper on mutability — it\'s the concept that explains half of Python\'s design choices. '
+              'Imagine you\'re at a potluck. An immutable dish is one that\'s already plated — '
+              'you can share it freely because nobody can take a bite out of your portion. '
+              'A mutable dish is a communal bowl — if someone adds hot sauce, everyone tastes it. '
+              'This is why dict keys must be hashable: the hash is like a table number, '
+              'and if your dish changes after being placed, nobody can find it anymore. '
+              'That\'s exactly why lists can\'t be dict keys — they\'re mutable.',
           startMs: 138000,
           endMs: 196000,
         ),
@@ -459,10 +578,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd5',
           speaker: 'Host',
           text:
-              'The classic trap is the mutable default argument. Write def f, '
-              'items equals empty list, and that list is created once when the '
-              'function is defined, then reused on every call. The fix is a '
-              'default of None and building a fresh list inside the body.',
+              'Now, the trap that catches literally everyone. Say you write a function with items equals an empty list as default. '
+              'Here\'s the thing: that empty list is created once, when Python reads your def statement, '
+              'not each time you call the function. It\'s like a shared office stapler — '
+              'everyone who comes to the desk uses the same one, and it accumulates everyone\'s staples. '
+              'The fix is beautifully simple: default to None, then inside the function, '
+              'create a fresh list if items is still None.',
           startMs: 196000,
           endMs: 248000,
         ),
@@ -470,11 +591,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd6',
           speaker: 'Guest',
           text:
-              'And numeric precision. float is binary, so 0.1 plus 0.2 is not '
-              'exactly 0.3. For money use decimal.Decimal constructed from '
-              'strings; for exact ratios use fractions.Fraction; for tolerance '
-              'comparisons use math.isclose. Reaching for round() as a fix '
-              'usually just moves the error somewhere less visible.',
+              'And a quick word on floating point, because this one drives people crazy. '
+              'Floats use binary, and some decimal numbers — like 0.1 — are repeating fractions in binary, '
+              'just like one-third is 0.33333... in decimal. So 0.1 plus 0.2 equals 0.30000000000000004. '
+              'For money, reach for Decimal — but construct it from strings, not floats. '
+              'For exact fractions, there\'s Fraction. And for comparisons, use math.isclose. '
+              'Throwing round() at the problem just sweeps the dust under the rug.',
           startMs: 248000,
           endMs: 306000,
         ),
@@ -482,10 +604,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd7',
           speaker: 'Host',
           text:
-              'Worth saying that type hints change none of this. Annotating x '
-              'as int is documentation plus a signal to a static checker; the '
-              'interpreter does not enforce it at runtime. Dynamic typing '
-              'stays dynamic.',
+              'One last thing about type hints, since people often wonder if they change the game. '
+              'They don\'t. If you write x colon int, you\'re leaving a note for your IDE and for mypy — '
+              'it\'s like writing "fragile" on a box. The interpreter reads it, shrugs, and moves on. '
+              'At runtime, Python stays as dynamically typed as ever. '
+              'The hints are documentation that a machine can check, not enforcement.',
           startMs: 306000,
           endMs: 356000,
         ),
@@ -493,10 +616,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd8',
           speaker: 'Guest',
           text:
-              'To close: names bind to objects, objects own their type, and '
-              'mutability determines who can be surprised by a change. Every '
-              'later topic — functions, classes, closures, concurrency — is '
-              'built on those three facts.',
+              'So let\'s wrap up with the three pillars. Names are sticky notes — they don\'t hold data, they point to it. '
+              'Objects own their type — the value knows what it is, not the label. '
+              'And mutability is the great divider — it determines whether change is a shared surprise or a local affair. '
+              'Everything coming up — functions, classes, closures, async — sits squarely on these three ideas. '
+              'Get comfortable with them now and everything else clicks faster.',
           startMs: 356000,
           endMs: 420000,
         ),

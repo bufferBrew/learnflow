@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/content_block.dart';
 import '../models/lesson.dart';
 import '../models/podcast.dart';
 import '../state/podcast_playback_provider.dart';
 import '../state/progress_provider.dart';
 import '../theme/design_tokens.dart';
+import '../widgets/callout_widget.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/icon_mapping.dart';
 import '../widgets/page_body.dart';
@@ -16,6 +18,73 @@ import '../widgets/section_header.dart';
 /// Cap on the player column at desktop width. The transport is a control
 /// panel, not prose — past this it just spreads thin.
 const double _playerColumnMaxWidth = 520;
+
+/// Sits above the transport in both layouts, describing whichever of the two
+/// audio modes is active. In [PlaybackMode.simulated] there is no audio
+/// anywhere — the "player" is a timer-driven position synced to the
+/// transcript — and that is easy to mistake for a bug rather than the design,
+/// so it gets said outright rather than left to be inferred from silence.
+CalloutBlock _audioBanner(PlaybackMode mode) => switch (mode) {
+  PlaybackMode.simulated => const CalloutBlock(
+    type: CalloutType.info,
+    title: 'Simulated audio',
+    text:
+        'This is a transcript-synced preview, not a real recording — the '
+        'timeline and highlighting move on their own, but no audio plays.',
+  ),
+  PlaybackMode.tts => const CalloutBlock(
+    type: CalloutType.info,
+    title: 'Text-to-speech audio',
+    text:
+        'A synthesized voice reads the transcript aloud, at a rate matched '
+        'to the chosen playback speed.',
+  ),
+};
+
+/// The audio-mode banner paired with the toggle that switches it.
+class _AudioModeBanner extends StatelessWidget {
+  const _AudioModeBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Selector<PodcastPlaybackProvider, PlaybackMode>(
+      selector: (BuildContext _, PodcastPlaybackProvider playback) =>
+          playback.mode,
+      builder: (BuildContext context, PlaybackMode mode, Widget? _) {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Expanded(child: CalloutWidget(block: _audioBanner(mode))),
+            const SizedBox(width: AppSpacing.xs),
+            _AudioModeToggle(mode: mode),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// A small speaker-icon toggle between a synthesized voice and the simulated
+/// timing preview that has always driven this pane.
+class _AudioModeToggle extends StatelessWidget {
+  const _AudioModeToggle({required this.mode});
+
+  final PlaybackMode mode;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool tts = mode == PlaybackMode.tts;
+    return IconButton(
+      onPressed: context.read<PodcastPlaybackProvider>().toggleMode,
+      tooltip: tts ? 'Switch to simulated audio' : 'Switch to text-to-speech',
+      iconSize: 20,
+      style: IconButton.styleFrom(
+        minimumSize: const Size.square(AppDimensions.minTouchTarget),
+      ),
+      icon: Icon(tts ? Icons.record_voice_over : Icons.hearing_disabled),
+    );
+  }
+}
 
 /// The Listen pane of a lesson: pick a script length, drive the transport, and
 /// follow the transcript as it plays.
@@ -161,6 +230,8 @@ class _StackedLayout extends StatelessWidget {
         else ...<Widget>[
           SliverToBoxAdapter(child: _VariantSelector(script: script)),
           const SliverGap(AppSpacing.lg),
+          const SliverToBoxAdapter(child: _AudioModeBanner()),
+          const SliverGap(AppSpacing.sm),
           const SliverToBoxAdapter(child: PodcastPlayer()),
           const SliverGap(AppSpacing.xxl),
           const SliverToBoxAdapter(child: _TranscriptHeading()),
@@ -214,6 +285,8 @@ class _WideLayout extends StatelessWidget {
                     const SizedBox(height: AppSpacing.xl),
                     _VariantSelector(script: script),
                     const SizedBox(height: AppSpacing.lg),
+                    const _AudioModeBanner(),
+                    const SizedBox(height: AppSpacing.sm),
                     const PodcastPlayer(),
                   ],
                 ),

@@ -31,7 +31,7 @@ void main() {
     test('exposes the sample topic, module and lesson', () {
       final library = LessonLibraryProvider();
 
-      expect(library.topics, hasLength(3));
+      expect(library.topics, hasLength(5));
       expect(library.getTopic('python')?.title, 'Python');
       expect(library.getModule('python', 'py-foundations')?.lessons, hasLength(3));
       expect(
@@ -40,12 +40,14 @@ void main() {
       );
       expect(library.getTopic('ai-fundamentals')?.title, 'AI Fundamentals');
       expect(library.getTopic('deep-learning')?.title, 'Deep Learning');
-      expect(library.allLessons, hasLength(17));
+      expect(library.getTopic('rag')?.title, 'RAG');
+      expect(library.getTopic('agentic-workflows')?.title, 'Agentic Workflows');
+      expect(library.allLessons, hasLength(25));
       expect(library.getTopic('rust'), isNull);
     });
 
     test('every lesson mode enum value is covered by the model', () {
-      expect(LessonMode.values, hasLength(4));
+      expect(LessonMode.values, hasLength(5));
     });
   });
 }

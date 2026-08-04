@@ -1,5 +1,6 @@
 import '../../models/content_block.dart';
 import '../../models/exercise.dart';
+import '../../models/game.dart';
 import '../../models/lesson.dart';
 import '../../models/podcast.dart';
 import '../../models/review.dart';
@@ -16,6 +17,7 @@ const Lesson functionsLesson = Lesson(
   read: _read,
   practice: _practice,
   podcast: _podcast,
+  play: _play,
   review: _review,
   sources: _sources,
 );
@@ -505,6 +507,110 @@ print(make_averager()(4))   # 4.0 - independent state
   ],
 );
 
+const GameContent _play = GameContent(
+  games: [
+    BugHuntGame(
+      id: 'game-functions-mutable-default',
+      title: 'Find the shared default',
+      instructions: 'Tap the line that causes tasks to leak between calls.',
+      code: '''
+def add_task(name, tasks=[]):
+    tasks.append(name)
+    return tasks
+
+
+print(add_task("write"))
+print(add_task("review"))
+''',
+      buggyLine: 1,
+      explanation:
+          'The default list is built once, when def runs, and stored on the '
+          'function object. Every call that omits tasks shares that one list, '
+          'so it grows across calls instead of starting fresh.',
+      fixedCode: '''
+def add_task(name, tasks=None):
+    if tasks is None:
+        tasks = []
+    tasks.append(name)
+    return tasks
+
+
+print(add_task("write"))    # ['write']
+print(add_task("review"))   # ['review']
+''',
+    ),
+    OutputPredictorGame(
+      id: 'game-functions-closure-loop',
+      title: 'What does this print?',
+      instructions: 'Pick what the list comprehension prints.',
+      code: '''
+funcs = [lambda: i for i in range(3)]
+print([f() for f in funcs])
+''',
+      options: ['[0, 1, 2]', '[2, 2, 2]', '[0, 0, 0]', 'TypeError'],
+      correctIndex: 1,
+      explanation:
+          'Closures capture the variable i, not its value at definition time. '
+          'All three lambdas share one cell, and by the time they are called '
+          'the loop has left 2 in it — so every call returns 2.',
+    ),
+    FillBlankGame(
+      id: 'game-functions-keyword-only',
+      title: 'Force a keyword-only parameter',
+      instructions: 'Type the missing symbol.',
+      code: '''
+def connect(host, port=5432, ______, timeout=10):
+    return f"{host}:{port} timeout={timeout}"
+
+
+print(connect("db.internal", timeout=2))
+''',
+      blanks: [Blank(answer: '*', hint: 'a single symbol')],
+    ),
+    SyntaxScrambleGame(
+      id: 'game-functions-closure-scramble',
+      title: 'Rebuild the counter closure',
+      instructions: 'Drag or use the arrows to put these lines back in order.',
+      lines: [
+        'def make_counter(start=0):',
+        '    count = start',
+        '    def increment(step=1):',
+        '        nonlocal count',
+        '        count += step',
+        '        return count',
+        '    return increment',
+      ],
+    ),
+    TermMatchGame(
+      id: 'game-functions-terms',
+      title: 'Match the vocabulary',
+      instructions: 'Tap a term, then tap its definition.',
+      pairs: [
+        TermPair(
+          term: 'Keyword-only parameter',
+          definition: 'A parameter after a bare * that callers must pass by name.',
+        ),
+        TermPair(
+          term: '*args and **kwargs',
+          definition: 'Collect surplus positional and keyword arguments.',
+        ),
+        TermPair(
+          term: 'LEGB rule',
+          definition: 'The scope search order: Local, Enclosing, Global, Builtins.',
+        ),
+        TermPair(
+          term: 'Closure',
+          definition: 'An inner function plus the enclosing variables it captured.',
+        ),
+        TermPair(
+          term: 'nonlocal',
+          definition: 'Declares that assignment rebinds an enclosing function variable.',
+        ),
+      ],
+    ),
+  ],
+);
+
 const PodcastScript _podcast = PodcastScript(
   variants: {
     PodcastVariant.concise: ScriptVariant(
@@ -515,10 +621,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c1',
           speaker: 'Host',
           text:
-              'Functions and scope, short version. A def statement builds a '
-              'function object and binds it to a name — that is all it does. '
-              'Functions are values, so you can pass them around, store them in '
-              'dicts and return them from other functions.',
+              'Functions and scope, the short version. A def statement does exactly one thing: '
+              'it builds a function object and slaps a name on it. That\'s it. No magic. '
+              'And since functions are just values — like numbers or strings — you can pass them around, '
+              'store them in dicts, or return them from other functions. '
+              'It\'s like having a recipe card you can hand to anyone, photocopy, or pin to a bulletin board.',
           startMs: 0,
           endMs: 42000,
         ),
@@ -526,12 +633,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c2',
           speaker: 'Guest',
           text:
-              'On arguments: defaults make parameters optional, star-args '
-              'collects extra positional arguments into a tuple, and '
-              'double-star-kwargs collects extra keyword arguments into a dict. '
-              'A bare star in the parameter list forces everything after it to '
-              'be passed by keyword, which is the cheapest readability win in '
-              'the language.',
+              'Quick tour of arguments. Defaults make parameters optional — classic and essential. '
+              '*args collects extra positional arguments into a tuple. **kwargs collects extra keyword arguments into a dict. '
+              'But the real gem is a bare * in the parameter list: it forces everything after it to be keyword-only. '
+              'This is the cheapest readability win in all of Python. No more call sites that look like '
+              '"process(data, True, False, 42)" where nobody knows what True and False mean.',
           startMs: 42000,
           endMs: 92000,
         ),
@@ -539,10 +645,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c3',
           speaker: 'Host',
           text:
-              'The one rule you must not forget: never use a mutable default. '
-              'The default is evaluated once when the function is defined, so '
-              'every call shares the same list. Default to None and create the '
-              'list inside the body.',
+              'One rule you absolutely must remember: never use a mutable default value. '
+              'That default is evaluated once, when Python reads the def line — not each time you call. '
+              'It\'s like an office coffee pot that was brewed once and everyone drinks from the same batch. '
+              'Default to None, then build your fresh list or dict inside the function body. '
+              'This single rule prevents a whole class of sneaky, hard-to-debug errors.',
           startMs: 92000,
           endMs: 130000,
         ),
@@ -550,10 +657,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c4',
           speaker: 'Guest',
           text:
-              'Scope follows LEGB: local, enclosing, global, builtins, first '
-              'match wins. And assigning to a name anywhere in a function makes '
-              'that name local for the whole function, which is why reading a '
-              'global before assigning it raises UnboundLocalError.',
+              'Scope follows the LEGB rule: Local, Enclosing, Global, Builtins — first match wins. '
+              'Like searching for your keys: check your pockets first, then your desk, then the whole room, then the entire house. '
+              'Critical gotcha: if you assign to a name ANYWHERE in a function, that name is local EVERYWHERE in that function — '
+              'even on lines before the assignment. So reading a global on line 1 and assigning to it on line 2? '
+              'UnboundLocalError. Python already decided it\'s local, and you haven\'t put anything in it yet.',
           startMs: 130000,
           endMs: 172000,
         ),
@@ -561,10 +669,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c5',
           speaker: 'Host',
           text:
-              'Use global and nonlocal only when you really mean to rebind an '
-              'outer name. Everything else is closures — inner functions '
-              'remembering the environment they were built in. That is the '
-              'foundation for decorators.',
+              'Use global and nonlocal sparingly — only when you genuinely need to rebind a name in an outer scope. '
+              'Everything else is closures: inner functions that remember the environment they were born in, '
+              'like a snapshot of the room at the moment of creation. '
+              'Closures are the foundation for decorators, factories, and half the elegant patterns in Python. '
+              'Master them and a whole category of problems becomes trivial.',
           startMs: 172000,
           endMs: 204000,
         ),
@@ -578,11 +687,10 @@ const PodcastScript _podcast = PodcastScript(
           id: 's1',
           speaker: 'Host',
           text:
-              'Functions today — and specifically the two halves people tend to '
-              'learn separately: how arguments get in, and how names get '
-              'resolved once you are inside. Get both right and a surprising '
-              'amount of Python stops being mysterious, including decorators, '
-              'callbacks and most import-time bugs.',
+              'Functions today — and we\'re tackling the two halves people usually learn years apart: '
+              'how arguments get into a function, and how names get resolved once you\'re inside the body. '
+              'Get both of these right and a shocking amount of Python stops feeling like magic — '
+              'decorators make sense, callbacks become obvious, and those weird import-time bugs just evaporate.',
           startMs: 0,
           endMs: 54000,
         ),
@@ -590,12 +698,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 's2',
           speaker: 'Guest',
           text:
-              'The framing that helps most is that def is an assignment. It '
-              'creates a function object at runtime and binds it to a name. '
-              'Nothing about it is special: you can put function objects in a '
-              'list, use them as dict values for dispatch, or hand them to '
-              'sorted as a key. Every callable-based pattern in Python comes '
-              'from that.',
+              'Here\'s the mental model that changes everything: def is just an assignment. '
+              'At runtime, Python creates a function object — a real thing in memory — '
+              'and binds a name to it. Nothing magical. You can put function objects in a list, '
+              'use them as dict values for a dispatch table, or pass them to sorted() as the key. '
+              'It\'s like having a toolbox where the tools themselves are also objects you can sort, label, and hand around. '
+              'Every callback, every decorator, every higher-order function pattern flows from this one insight.',
           startMs: 54000,
           endMs: 120000,
         ),
@@ -603,11 +711,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 's3',
           speaker: 'Host',
           text:
-              'On the parameter side, Python is unusually expressive. You have '
-              'positional parameters, defaults, star-args for surplus '
-              'positionals, double-star-kwargs for surplus keywords, and two '
-              'markers: a bare star meaning "keyword-only from here" and a '
-              'slash meaning "positional-only up to here".',
+              'On parameters, Python gives you an unusually rich vocabulary. Positional parameters, defaults, '
+              '*args for catching extra positional arguments, **kwargs for catching extra keyword arguments. '
+              'And two special markers: a bare * that says "everything after this must be named" '
+              'and a / that says "everything before this must be positional." '
+              'Between these two markers you can design an API that\'s impossible to call wrong.',
           startMs: 120000,
           endMs: 178000,
         ),
@@ -615,11 +723,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 's4',
           speaker: 'Guest',
           text:
-              'Keyword-only is the one to adopt today. Any call site that reads '
-              'like a function name followed by True, False, False has lost the '
-              'argument. Force those flags to be named and the call becomes '
-              'self-documenting — and you can reorder or add options later '
-              'without breaking anyone.',
+              'Keyword-only arguments are the pattern to adopt today. If your call site looks like '
+              '"process(data, True, False, False)" — you\'ve already lost. Nobody knows what those booleans mean. '
+              'Force them to be keyword-only with a bare *, and suddenly the call reads like English: '
+              '"process(data, validate=True, cache=False, async_mode=False)." '
+              'Self-documenting, and you can reorder or add options later without breaking any existing calls.',
           startMs: 178000,
           endMs: 236000,
         ),
@@ -627,12 +735,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 's5',
           speaker: 'Host',
           text:
-              'Then defaults, and the classic trap. Default values are '
-              'evaluated once, when the def executes, and stored on the '
-              'function object. So a default of empty-list is a single list '
-              'shared by every call that omits the argument. It accumulates. '
-              'The fix is always the same: default to None, then build the real '
-              'value inside the body.',
+              'Now defaults, and the classic trap that catches every Python developer at least once. '
+              'Default values are evaluated exactly once — when the def statement runs — '
+              'and they\'re stored right on the function object. So an empty list default is ONE list '
+              'shared by every single call that doesn\'t provide that argument. It accumulates across calls '
+              'like a shared shopping cart that nobody ever empties. '
+              'The fix never changes: default to None, then create the real value inside the function body.',
           startMs: 236000,
           endMs: 300000,
         ),
@@ -640,11 +748,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 's6',
           speaker: 'Guest',
           text:
-              'Now scope. Python searches local, then enclosing functions, then '
-              'module globals, then builtins — LEGB — and stops at the first '
-              'match. Note what does not create a scope: if statements, for '
-              'loops and with blocks. A name bound inside a loop body is '
-              'perfectly visible after the loop.',
+              'Now scope — the LEGB rule. Python searches Local, then Enclosing functions, then Global module, '
+              'then Builtins — and stops at the very first match. Simple and predictable. '
+              'But here\'s what trips people up: lots of things that LOOK like they should create a scope... don\'t. '
+              'If statements, for loops, with blocks — none of them create a new scope. '
+              'A variable defined inside a loop is perfectly visible after the loop ends. '
+              'Only functions (and comprehensions, and class bodies) create new scopes in Python.',
           startMs: 300000,
           endMs: 360000,
         ),
@@ -652,12 +761,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 's7',
           speaker: 'Host',
           text:
-              'The compile-time part trips everyone up once. If a function '
-              'assigns to a name anywhere in its body, that name is local for '
-              'the entire body, decided before the function ever runs. So '
-              'printing a global on line one and assigning to it on line two '
-              'gives you UnboundLocalError on line one. Declaring global fixes '
-              'it — or better, pass the value in and return the new one.',
+              'The compile-time rule trips up everyone exactly once. If a function assigns to a name ANYWHERE '
+              'in its body, Python decides BEFORE the function runs that this name is local for the ENTIRE body. '
+              'So if you print a global on line 1 and assign to it on line 2 — UnboundLocalError on line 1. '
+              'Python already decided it\'s local, and nothing is in it yet. You can fix it with the global keyword — '
+              'but honestly, the better fix is passing the value in as a parameter and returning the new one. '
+              'Cleaner, testable, no surprises.',
           startMs: 360000,
           endMs: 428000,
         ),
@@ -665,12 +774,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 's8',
           speaker: 'Guest',
           text:
-              'Closures round it off. An inner function keeps access to the '
-              'enclosing function\'s variables even after the outer call has '
-              'returned, and nonlocal lets it rebind them. That is how you get '
-              'counters, memoisers and decorators without a class. Just '
-              'remember closures capture variables, not values — a lambda made '
-              'in a loop sees the loop variable\'s final value.',
+              'Closures bring it all together. An inner function keeps access to its enclosing function\'s variables '
+              'even after the outer function has returned — it\'s like having a key to a room that no longer exists. '
+              'nonlocal lets the inner function rebind those variables, enabling counters, memoizers, and decorators '
+              'without writing a single class. One critical detail: closures capture VARIABLES, not VALUES. '
+              'Make three lambdas in a loop and all three will see the loop variable\'s final value — '
+              'not the value it had when each lambda was created. This is the classic "late binding" trap.',
           startMs: 428000,
           endMs: 492000,
         ),
@@ -684,11 +793,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd1',
           speaker: 'Host',
           text:
-              'The long form on functions. We are going to cover the function '
-              'object itself, the full argument protocol, how CPython resolves '
-              'names at compile time, closures and cells, and then some '
-              'signature design. By the end, decorators should look like an '
-              'obvious consequence rather than magic.',
+              'The deep dive on functions. We\'re going to explore the function object itself — '
+              'what it actually contains — the full argument passing protocol, how CPython resolves names '
+              'at compile time (before your code even runs!), closures and cells, and some signature design wisdom. '
+              'By the end, decorators should feel like an obvious consequence of everything we\'ve discussed, '
+              'not some arcane wizardry.',
           startMs: 0,
           endMs: 68000,
         ),
@@ -696,13 +805,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd2',
           speaker: 'Guest',
           text:
-              'Start with what def leaves behind. You get an object with a '
-              'dunder code attribute holding the compiled bytecode, a dunder '
-              'defaults tuple, a dunder globals reference to the defining '
-              'module\'s namespace, a dunder closure tuple, and a mutable dunder '
-              'dict you can hang attributes on. Every one of those is '
-              'inspectable at runtime, which is what makes tools like '
-              'functools.wraps and inspect.signature possible.',
+              'Let\'s look at what a def statement actually leaves behind. You get a function object with: '
+              '__code__ — the compiled bytecode. __defaults__ — a tuple of default values. '
+              '__globals__ — a reference to the module\'s namespace. __closure__ — captured variables from enclosing scopes. '
+              'And __dict__ — a mutable dictionary where you can hang arbitrary attributes. '
+              'Every one of these is inspectable at runtime! That\'s how tools like functools.wraps and inspect.signature work: '
+              'they just read these attributes. A function is a regular object you can poke and prod.',
           startMs: 68000,
           endMs: 154000,
         ),
@@ -710,11 +818,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd3',
           speaker: 'Host',
           text:
-              'The defaults tuple is the whole explanation for the mutable '
-              'default bug. It is built once, at def time, and it lives on the '
-              'function. Nothing re-evaluates it. So a list default is one '
-              'object for the process lifetime — and you can actually watch it '
-              'grow by printing the function\'s dunder defaults between calls.',
+              'The __defaults__ tuple explains the mutable default bug completely. '
+              'It\'s built once, at def time, and lives on the function object forever. Nothing re-evaluates it. '
+              'So if your default is [], that\'s ONE list for the entire lifetime of your program. '
+              'You can literally watch it grow by printing the_function.__defaults__ between calls — '
+              'each call that appends adds to the same list, and you can see the damage accumulate. '
+              'It\'s not a bug in Python; it\'s a direct consequence of how function objects store their defaults.',
           startMs: 154000,
           endMs: 224000,
         ),
@@ -722,13 +831,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd4',
           speaker: 'Guest',
           text:
-              'On to argument passing, which people describe wrongly all the '
-              'time. Python is neither pass-by-value nor pass-by-reference in '
-              'the C++ sense. It passes object references by value: the callee '
-              'gets its own name bound to the caller\'s object. Rebinding the '
-              'parameter does nothing to the caller; mutating the object is '
-              'visible everywhere. That single sentence resolves most arguments '
-              'about it.',
+              'Now argument passing — a topic people argue about endlessly because they use the wrong framework. '
+              'Python is neither pass-by-value nor pass-by-reference in the C++ sense. '
+              'It\'s "pass object reference by value": the callee gets its own local name bound to the same object '
+              'the caller passed. Rebinding that name inside the function? Caller never sees it. '
+              'Mutating the object through that name? Caller sees it immediately — because it\'s the same object. '
+              'Think of it like sharing a Google Doc: you each have your own link, but edits are visible to everyone.',
           startMs: 224000,
           endMs: 304000,
         ),
@@ -736,13 +844,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd5',
           speaker: 'Host',
           text:
-              'Then there is the shape of the parameter list. Positional-only '
-              'parameters, marked with a slash, exist because the standard '
-              'library has functions whose parameter names were never meant to '
-              'be part of the contract. If you write a library, a slash lets '
-              'you rename parameters later without breaking callers, and a '
-              'bare star lets you add options without disturbing positional '
-              'order.',
+              'Let\'s talk parameter list design — the / and * markers that most people skip over. '
+              'The slash makes parameters before it positional-only. Why would you want that? '
+              'The standard library has functions whose parameter names were never meant to be public API — '
+              'allowing keyword calls would lock those names in forever. With /, you can rename them later. '
+              'The bare * makes parameters after it keyword-only — letting you add options without disturbing '
+              'positional order. Together they let you design an API that\'s both flexible and stable.',
           startMs: 304000,
           endMs: 380000,
         ),
@@ -750,13 +857,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd6',
           speaker: 'Guest',
           text:
-              'Name resolution is where CPython does something genuinely '
-              'clever. The compiler decides for each name whether it is local, '
-              'a free variable from an enclosing scope, or global — before the '
-              'function ever runs. Locals are then not dictionary lookups at '
-              'all; they are numbered slots in the frame, loaded with the '
-              'LOAD_FAST instruction. Globals stay dictionary lookups. That is '
-              'why locals are measurably faster.',
+              'Name resolution is where CPython shows its clever side. At compile time — BEFORE your function runs — '
+              'the compiler scans the entire function body and tags every name: local, free variable (from an enclosing scope), '
+              'or global. Locals get special treatment: they become numbered slots in the stack frame, '
+              'accessed with the LOAD_FAST instruction — no dictionary lookup needed. '
+              'Globals stay as dictionary lookups. This is why accessing a local variable is measurably faster '
+              'than accessing a global. The compiler did the hard work before you even hit "run."',
           startMs: 380000,
           endMs: 466000,
         ),
@@ -764,12 +870,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd7',
           speaker: 'Host',
           text:
-              'And that compile-time decision is exactly why UnboundLocalError '
-              'exists as a distinct error from NameError. The compiler saw an '
-              'assignment somewhere in the body, so it allocated a local slot '
-              'for the whole function. Reading it before anything is stored '
-              'there is a different failure from a name that does not exist at '
-              'all.',
+              'This compile-time classification explains why UnboundLocalError is a distinct error from NameError. '
+              'The compiler saw an assignment somewhere in the function body, so it said "this name is local" '
+              'and allocated a numbered slot for it. When you try to read that slot before anything is stored in it, '
+              'you get UnboundLocalError — "I have a slot for this, but it\'s empty." '
+              'NameError is different: it means "I have no idea what this name refers to at all." '
+              'Two different errors, two different problems — and the compiler decided which one you\'d get before execution.',
           startMs: 466000,
           endMs: 536000,
         ),
@@ -777,12 +883,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd8',
           speaker: 'Guest',
           text:
-              'Closures use a third storage class. A variable that an inner '
-              'function needs is promoted to a cell — a small box holding one '
-              'reference. Both functions point at that cell, so the outer '
-              'frame can be destroyed and the value survives. You can see it: '
-              'the inner function\'s dunder closure is a tuple of cells, each '
-              'with a cell_contents attribute.',
+              'Closures introduce a third kind of variable storage: the cell. '
+              'When an inner function needs a variable from an enclosing scope, Python promotes that variable '
+              'into a cell — a tiny box that holds exactly one reference. Both the outer and inner functions '
+              'point to this same cell. The outer frame can be garbage collected, but the cell survives, '
+              'keeping the value alive. You can inspect this: the inner function\'s __closure__ attribute '
+              'is a tuple of cells, each with a .cell_contents you can read. '
+              'It\'s like a safety deposit box that outlives the bank that issued it.',
           startMs: 536000,
           endMs: 616000,
         ),
@@ -790,12 +897,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd9',
           speaker: 'Host',
           text:
-              'The shared cell is why late binding bites. Build three lambdas '
-              'in a loop over range three and call them afterwards and all '
-              'three return two, because they share one cell that the loop left '
-              'at two. The usual fix is a default argument capturing the '
-              'current value, which works precisely because defaults are '
-              'evaluated eagerly at definition time.',
+              'The shared cell explains the late binding trap perfectly. Build three lambdas in a loop '
+              'and call them afterward — all three return the loop variable\'s final value. Why? '
+              'All three lambdas share the SAME cell. The loop updates that cell, and by the time you call them, '
+              'the cell holds the final value. The fix: capture the current value in a default argument — '
+              'lambda x=i: x. This works because defaults are evaluated eagerly at definition time, '
+              'snapshotting the value before the loop moves on. It\'s a clever trick that exploits '
+              'the very behavior we just learned about mutable defaults, but in a good way this time.',
           startMs: 616000,
           endMs: 692000,
         ),
@@ -803,12 +911,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd10',
           speaker: 'Guest',
           text:
-              'Put closures together with the fact that functions are objects '
-              'and you have decorators. A decorator is a function that takes a '
-              'function, defines a wrapper that closes over it, and returns the '
-              'wrapper. The at-sign syntax is pure sugar for rebinding the '
-              'name. Use functools.wraps on the wrapper so the name, docstring '
-              'and signature metadata survive.',
+              'Finally, decorators: they\'re just closures and first-class functions colliding beautifully. '
+              'A decorator takes a function, defines a wrapper that captures it in a closure, '
+              'and returns the wrapper. The @ syntax is pure sugar — @log above def foo() '
+              'is exactly the same as writing foo = log(foo) underneath. '
+              'Always use functools.wraps on your wrapper — it copies over the original function\'s name, '
+              'docstring, and signature so tools and debuggers still see the real identity underneath. '
+              'Without wraps, every decorated function looks like it\'s called "wrapper" in tracebacks.',
           startMs: 692000,
           endMs: 764000,
         ),
@@ -816,11 +925,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd11',
           speaker: 'Host',
           text:
-              'To close, signature design. Few positionals, flags keyword-only, '
-              'no mutable defaults, one kind of return value, and annotations '
-              'as documentation for readers and static checkers — the runtime '
-              'ignores them. The body of a function is easy to change; its '
-              'signature is a promise.',
+              'To close, let\'s talk signature design — because a function\'s signature is a promise to every caller. '
+              'Keep positionals to a minimum. Make flags and options keyword-only. '
+              'Never use mutable defaults. Return one kind of thing consistently — '
+              'don\'t make callers check isinstance on your return value. '
+              'Use type annotations as documentation for humans and static checkers — '
+              'the runtime ignores them, but your teammates won\'t. '
+              'The body you can refactor anytime. The signature? That\'s a contract. Choose it carefully.',
           startMs: 764000,
           endMs: 828000,
         ),

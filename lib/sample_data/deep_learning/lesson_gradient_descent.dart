@@ -1,5 +1,6 @@
 import '../../models/content_block.dart';
 import '../../models/exercise.dart';
+import '../../models/game.dart';
 import '../../models/lesson.dart';
 import '../../models/podcast.dart';
 import '../../models/review.dart';
@@ -17,6 +18,7 @@ const Lesson gradientDescentLesson = Lesson(
   read: _read,
   practice: _practice,
   podcast: _podcast,
+  play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
 );
@@ -845,10 +847,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c1',
           speaker: 'Host',
           text:
-              'Gradient descent in five minutes. A loss function takes every '
-              'possible setting of your weights and gives back one number: how '
-              'wrong the model is. Picture that as a landscape where the height '
-              'is the loss. Training is walking downhill on it.',
+              'Gradient descent in five minutes, and I want to start with a '
+              'hiking metaphor because it gets the whole idea across in one '
+              'image. You are standing on a mountain in thick fog. You cannot '
+              'see the valley — you cannot see anything except the ground '
+              'right around your feet. But you can feel which way the ground '
+              'slopes. That slope is the gradient. Take a small step downhill. '
+              'Feel again. Step again. That is gradient descent — a purely '
+              'local algorithm that never sees the big picture and still '
+              'manages to find a low point.',
           startMs: 0,
           endMs: 44000,
         ),
@@ -856,11 +863,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c2',
           speaker: 'Guest',
           text:
-              'And the gradient is what tells you which way is down. It is the '
-              'derivative of the loss with respect to every weight, and it '
-              'points in the direction of steepest increase — so you subtract '
-              'it. That is the whole rule: w equals w minus learning rate times '
-              'gradient.',
+              'And the update rule is absurdly short: weight equals weight '
+              'minus learning rate times gradient. The gradient is the '
+              'derivative of the loss with respect to that weight — it says '
+              '"if I nudge this weight up a tiny bit, how much does the error '
+              'change?" Stack those for every weight and you have a vector '
+              'pointing in the direction of steepest increase in loss. So you '
+              'go the opposite way. Subtract it. That one line is the entire '
+              'algorithm.',
           startMs: 44000,
           endMs: 88000,
         ),
@@ -868,10 +878,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c3',
           speaker: 'Host',
           text:
-              'The learning rate is the step size, and it is the hyperparameter '
-              'most likely to be why nothing is training. Too small and you '
-              'creep. Too large and you jump over the minimum, land further up '
-              'the other side, and the whole thing runs away to NaN in seconds.',
+              'The learning rate is your step size, and it is the '
+              'hyperparameter most likely to be why your model is not '
+              'training. Too small and you take baby steps — you will '
+              'eventually reach the valley floor sometime around the heat '
+              'death of the universe. Too large and you leap clear over the '
+              'valley, land further up the far side, the gradient is now '
+              'even bigger, your next leap is even crazier — and within '
+              'seconds your loss explodes to NaN.',
           startMs: 88000,
           endMs: 132000,
         ),
@@ -879,11 +893,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c4',
           speaker: 'Guest',
           text:
-              'Then there is the question of how much data goes into each '
-              'gradient. Full batch uses everything: exact and unusably slow. '
-              'Stochastic uses one example: fast and very noisy. Mini-batch — '
-              'thirty-two, sixty-four, two hundred and fifty-six — is what '
-              'everyone actually uses, and what DataLoader assumes.',
+              'Then there is the data question. Computing the exact gradient '
+              'over your entire million-row dataset for every single step is '
+              'batch gradient descent — mathematically pure and unusably slow. '
+              'Using just one random row is stochastic — blazing fast but '
+              'incredibly noisy, like trying to navigate a mountain by feeling '
+              'one pebble at a time. The sweet spot is mini-batch: average '
+              'over 32 or 64 rows. The noise averages out enough to steer by, '
+              'and the whole thing maps perfectly onto GPU matrix operations.',
           startMs: 132000,
           endMs: 178000,
         ),
@@ -891,12 +908,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c5',
           speaker: 'Host',
           text:
-              'Last piece: momentum. Keep a running average of past gradients '
-              'instead of using only the latest one. Directions the gradient '
-              'keeps agreeing on build up speed; directions that flip sign '
-              'every step cancel out. In PyTorch it is one keyword — SGD, '
-              'momentum equals nought point nine — and it usually just makes '
-              'training faster.',
+              'Last piece: momentum. Plain gradient descent is like walking '
+              'downhill by stopping, looking at your feet, taking one step, '
+              'stopping again. Momentum gives you a memory — you keep rolling '
+              'in the direction you were already heading. Consistent downhill '
+              'directions build up speed; directions that flip back and forth '
+              'every step cancel out. In PyTorch it is one keyword argument '
+              'on the SGD optimizer, and it usually just makes everything '
+              'train faster.',
           startMs: 178000,
           endMs: 224000,
         ),
@@ -910,11 +929,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 's1',
           speaker: 'Host',
           text:
-              'You already know what a network computes: fix the weights, push '
-              'the input through, get an output. Today is the other direction. '
-              'The data is fixed, the weights are unknown, and we need a '
-              'procedure that finds good ones. That procedure is gradient '
-              'descent, and it is genuinely simpler than most people expect.',
+              'You already know what a network computes: fix the weights, '
+              'push input through, get output. Today is the reverse. The data '
+              'is fixed, the weights are unknown, and we need a procedure that '
+              'finds good ones. That procedure is gradient descent. And here '
+              'is the surprising part: it is genuinely simpler than most '
+              'people expect. The whole algorithm is one line of code '
+              'repeated: subtract a scaled version of the slope.',
           startMs: 0,
           endMs: 58000,
         ),
@@ -922,12 +943,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's2',
           speaker: 'Guest',
           text:
-              'Start with the landscape picture. The loss is a function of the '
-              'weights and nothing else, so every setting of the weights is a '
-              'point with a height. With one weight that is a curve. With two '
-              'it is a surface. With two hundred million it is nothing you can '
-              'draw — but you do not need to, because the algorithm is purely '
-              'local. It only ever asks which way is down from right here.',
+              'Start with the landscape picture. Imagine hiking through fog '
+              'on a mountain range with millions of dimensions. At any moment '
+              'you only know two things: your current altitude — that is your '
+              'loss — and which way is downhill from exactly where you stand — '
+              'that is your gradient. You never see the whole mountain. You '
+              'never know if you are heading for the lowest valley or just a '
+              'local dip. But that is enough, because gradient descent is '
+              'purely local. It only ever asks: which way is down, from right '
+              'here?',
           startMs: 58000,
           endMs: 120000,
         ),
@@ -935,13 +959,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's3',
           speaker: 'Host',
           text:
-              'And the gradient answers that. One partial derivative per '
-              'weight: if I nudge this one up slightly, how much does the loss '
-              'change? Stack them into a vector and it points in the direction '
-              'of steepest increase. So you go the other way. Subtract the '
-              'gradient, scaled by the learning rate. One line of code, and '
-              'backpropagation is just the efficient way of getting the '
-              'gradient.',
+              'And the gradient is the answer to that question. One partial '
+              'derivative per weight — "if I nudge this one up, how much does '
+              'the loss change?" — collected into a vector. That vector points '
+              'in the direction of steepest increase. You go the opposite way. '
+              'Subtract the gradient, scaled by a learning rate. That is the '
+              'entire update rule: w = w - lr × grad. Backpropagation is just '
+              'the efficient algorithm that computes all those partial '
+              'derivatives for every weight in one backward sweep, at '
+              'roughly the cost of one forward pass.',
           startMs: 120000,
           endMs: 186000,
         ),
@@ -949,12 +975,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's4',
           speaker: 'Guest',
           text:
-              'Worth noticing that the step shrinks by itself. Near a minimum '
-              'the gradient goes to zero, so the same learning rate produces '
-              'smaller and smaller moves and the run settles. On a simple '
-              'quadratic the distance to the optimum gets multiplied by a fixed '
-              'factor every step — geometric decay, which is fast at first and '
-              'then very patient.',
+              'Worth noticing a subtle property: the steps shrink by '
+              'themselves. Near a minimum, the ground flattens out and the '
+              'gradient goes to zero. The same learning rate produces smaller '
+              'and smaller moves, so the process settles without anyone '
+              'adjusting anything. On a simple quadratic bowl, each step '
+              'multiplies your distance to the bottom by a fixed factor — '
+              'geometric decay. Fast at first, then asymptotically patient. '
+              'You cover most of the ground early and spend the rest of '
+              'training inching towards perfection.',
           startMs: 186000,
           endMs: 248000,
         ),
@@ -962,12 +991,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 's5',
           speaker: 'Host',
           text:
-              'The learning rate. On a quadratic with second derivative a, the '
-              'distance shrinks by one minus lr times a each step. Below one in '
-              'absolute value you converge; above one you diverge. So the '
-              'boundary is set by the curvature of the loss, not by anything '
-              'about your taste — and it explains why the same rate can be fine '
-              'on one model and catastrophic on another.',
+              'The learning rate is where the physics of your loss landscape '
+              'determines what works. On a quadratic with curvature a, each '
+              'step multiplies distance to the minimum by 1 − lr × a. Below '
+              '1 in absolute value, you converge. Above 1, you diverge — and '
+              'the failure is self-reinforcing: overshoot puts you somewhere '
+              'with an even bigger gradient, which produces an even bigger '
+              'overshoot. The boundary between working and not is set by the '
+              'shape of your loss, not by your intuition.',
           startMs: 248000,
           endMs: 312000,
         ),
@@ -975,13 +1006,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's6',
           speaker: 'Guest',
           text:
-              'The loss curve names the failure for you. Straight and gently '
-              'down means you could go bigger. Drops then bounces on a plateau '
-              'means your steps are too big to settle. Rises or goes NaN means '
-              'far too big. And since the ideal rate changes during training, '
-              'schedules are standard: cosine decay to settle at the end, '
-              'warmup at the start so a fresh model is not blown apart by its '
-              'first few gradients.',
+              'The loss curve names the failure for you. A gently sloping '
+              'line that has not flattened: your rate is too small, you could '
+              'go faster. A curve that drops then bounces on a plateau: your '
+              'steps are too big to settle into the minimum. A curve that '
+              'rises or goes NaN: catastrophically too large. And since the '
+              'ideal rate changes as training progresses — big early, small '
+              'late — schedules are standard: cosine annealing sweeps the '
+              'rate down smoothly, and warmup at the start prevents a freshly '
+              'initialised model from being wrecked by its first few steps.',
           startMs: 312000,
           endMs: 374000,
         ),
@@ -989,13 +1022,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's7',
           speaker: 'Host',
           text:
-              'Then batching. Strictly, the loss is over the whole dataset, so '
-              'one honest update needs a full pass — that is batch gradient '
-              'descent, and on a million rows you get one update per epoch. '
-              'Stochastic goes to the opposite end with one example per update: '
-              'the estimate is bad but unbiased and nearly free. Mini-batch '
-              'averages thirty-two or so, and the error falls with the square '
-              'root of the batch size.',
+              'Then batching, which is a noise-versus-speed trade-off. True '
+              'gradient descent uses the entire dataset for every step — the '
+              'estimate is exact, and on a million rows you get one update '
+              'per era. Stochastic gradient descent uses one row — the '
+              'estimate is terrible and nearly free, giving you a million '
+              'noisy updates per pass. Mini-batch averaging over 32 rows hits '
+              'the sweet spot: the error in the estimate falls with √batch '
+              'size, and the whole thing is a matrix multiply — exactly what '
+              'GPUs are designed to do.',
           startMs: 374000,
           endMs: 436000,
         ),
@@ -1003,13 +1038,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's8',
           speaker: 'Guest',
           text:
-              'And momentum, which is the cheapest upgrade in the whole '
-              'toolbox. Keep a velocity: v equals beta times v plus the '
-              'gradient, then step along v. Consistent directions compound '
-              'towards roughly one over one minus beta times the plain step — '
-              'ten times, at beta nought point nine — while oscillating '
-              'directions cancel. Just remember that ten-times effective step '
-              'when you turn it on, and drop the learning rate accordingly.',
+              'And momentum, the cheapest upgrade in the toolbox. Keep a '
+              'velocity buffer: v = β × v + gradient, then step along v '
+              'instead of the raw gradient. Consistent downhill directions '
+              'compound — the effective step approaches 1/(1−β) times the '
+              'plain step, about ten times at β=0.9. Directions that flip '
+              'sign every step cancel. Think of a ball rolling downhill '
+              'instead of a point teleporting. Just remember that ten-times '
+              'boost when you turn momentum on, and drop the learning rate '
+              'accordingly.',
           startMs: 436000,
           endMs: 496000,
         ),
@@ -1023,12 +1060,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd1',
           speaker: 'Host',
           text:
-              'Long form on optimisation. The route: what a loss landscape '
-              'actually is and why the ones we care about are non-convex, the '
-              'update rule and what it does and does not know, the learning '
-              'rate as the boundary between three failure modes, batch size as '
-              'a noise dial, momentum as memory, and a short honest word about '
-              'where Adam fits.',
+              'Deep dive on optimisation. Imagine descending into a canyon '
+              'in complete darkness with only a flashlight that shows you the '
+              'ground three feet ahead. You take a step in the steepest '
+              'downhill direction, check again, step again. That is gradient '
+              'descent, and in the next forty minutes we are going to unpack '
+              'what a loss landscape actually is, why deep network landscapes '
+              'are non-convex, the update rule and what the gradient does and '
+              'does not know, the learning rate as the boundary between three '
+              'failure modes, batch size as a noise dial, momentum as memory, '
+              'and where Adam fits in this picture.',
           startMs: 0,
           endMs: 68000,
         ),
@@ -1036,13 +1077,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd2',
           speaker: 'Guest',
           text:
-              'The landscape framing first. Fix the dataset and the '
-              'architecture, and the loss becomes a function whose only inputs '
-              'are the weights. Every weight vector is a location, the loss is '
-              'the altitude. That framing is powerful because it converts '
-              'learning into search, and it is dangerous because our intuition '
-              'for surfaces comes from three dimensions and almost none of it '
-              'survives the trip to a hundred million.',
+              'The landscape framing. Fix the dataset and architecture, and '
+              'the loss becomes a function whose only inputs are the weights. '
+              'Every weight configuration is a location; the loss is the '
+              'altitude. This framing is powerful because it converts '
+              'learning into a search problem. It is dangerous because our '
+              'intuition for surfaces comes from living in three dimensions, '
+              'and almost none of it survives the journey to a hundred '
+              'million. A ball rolling down a 3D surface is a lovely metaphor. '
+              'The same ball in a million-dimensional space behaves in ways '
+              'that flatly contradict that metaphor.',
           startMs: 68000,
           endMs: 146000,
         ),
@@ -1050,13 +1094,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd3',
           speaker: 'Host',
           text:
-              'Take non-convexity. A convex loss has exactly one basin, so any '
-              'downhill procedure with a sane step size finds the global '
-              'optimum. Deep networks are wildly non-convex, and one reason is '
-              'almost silly: permute two hidden units together with their '
-              'incoming and outgoing weights and you have a numerically '
-              'different solution computing an identical function. Every '
-              'minimum is duplicated a factorial number of times.',
+              'Take non-convexity. A convex loss has exactly one basin — any '
+              'downhill walk with a reasonable step size finds the global '
+              'minimum. Deep networks are spectacularly non-convex, and one '
+              'reason is almost trivial: swap two hidden neurons along with '
+              'all their incoming and outgoing weights, and you get a '
+              'numerically different solution computing the identical '
+              'function. Every single minimum is duplicated a factorial '
+              'number of times. The landscape is riddled with equivalent '
+              'valleys.',
           startMs: 146000,
           endMs: 222000,
         ),
@@ -1064,14 +1110,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd4',
           speaker: 'Guest',
           text:
-              'Which sounds terrifying and mostly is not. The empirical picture '
-              'for large networks is that the many minima sit at broadly '
-              'similar loss values, so which basin you land in matters far less '
-              'than the low-dimensional intuition suggests. And the real '
-              'obstacles are usually not local minima at all — they are '
-              'saddles. In high dimensions, a point where the gradient vanishes '
-              'has to curve upward in every single direction to be a minimum, '
-              'and that is a demanding coincidence.',
+              'Which sounds terrifying and in practice is not. The empirical '
+              'picture for large over-parameterised networks is that the many '
+              'minima all sit at broadly similar loss values. Which basin you '
+              'fall into matters far less than classical optimisation theory '
+              'would predict. And the real obstacles are usually not minima '
+              'at all — they are saddles. In a million-dimensional space, a '
+              'point where the gradient vanishes has to curve upward in every '
+              'single direction to qualify as a minimum. That is an '
+              'extraordinarily demanding condition. Most critical points are '
+              'saddles: flat in some directions, downhill in others.',
           startMs: 222000,
           endMs: 300000,
         ),
@@ -1079,13 +1127,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd5',
           speaker: 'Host',
           text:
-              'Saddles are also why plateaus feel like the loss has stopped '
-              'improving when it has not. Around a saddle the gradient is tiny '
-              'in most directions, so progress crawls for a while and then '
-              'picks up once the trajectory finds the descending direction. '
-              'Noise from mini-batching helps here, and so does momentum — '
-              'anything that keeps you moving through a flat region rather than '
-              'grinding to a halt in it.',
+              'Saddles also explain why plateaus feel like the loss has '
+              'stopped improving when it has not. Around a saddle, the '
+              'gradient is tiny in most directions, so progress crawls. Then '
+              'the trajectory eventually finds the descending direction and '
+              'the loss picks up speed again. Noise from mini-batching helps '
+              'here — a noisy step is more likely to stumble into the '
+              'descending direction than a perfectly smooth one. Momentum '
+              'helps too: anything that keeps you rolling through flat '
+              'regions rather than grinding to a halt.',
           startMs: 300000,
           endMs: 378000,
         ),
@@ -1093,13 +1143,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd6',
           speaker: 'Guest',
           text:
-              'Back to the mechanics. The update is weights minus learning rate '
-              'times gradient, and I want to be precise about what the gradient '
-              'knows. It is a first-order, infinitesimally local quantity. It '
-              'tells you the slope exactly at your current point and says '
-              'nothing about whether that slope persists for a millimetre or a '
-              'mile. The learning rate is entirely a bet on how far the local '
-              'picture stays true.',
+              'Back to the mechanics. The update is w - lr × gradient, and '
+              'the gradient is a first-order, infinitesimally local quantity. '
+              'It tells you the exact slope at your current position and '
+              'says absolutely nothing about whether that slope persists for '
+              'a millimetre or a mile. The learning rate is entirely a bet on '
+              'how far the local picture stays accurate. Take too small a step '
+              'and you creep. Take too large a step and the slope you measured '
+              'is no longer relevant by the time you land — you are in '
+              'different terrain.',
           startMs: 378000,
           endMs: 456000,
         ),
@@ -1108,12 +1160,14 @@ const PodcastScript _podcast = PodcastScript(
           speaker: 'Host',
           text:
               'And curvature settles that bet. On a quadratic with second '
-              'derivative a, each step multiplies the distance to the minimum '
-              'by one minus lr times a. Under one in magnitude, you converge. '
-              'Over one, you diverge, and note that the failure is '
-              'self-reinforcing: overshoot puts you somewhere with a larger '
-              'gradient, which produces a larger overshoot. That is why '
-              'divergence is not a gentle degradation, it is an explosion.',
+              'derivative a, each step multiplies distance to the minimum by '
+              '1 - lr × a. Under 1 in magnitude: converge. Over 1: diverge — '
+              'the failure is catastrophically self-reinforcing. Overshoot '
+              'puts you further up the far side where the gradient is even '
+              'larger, so the next overshoot is even worse. That is why '
+              'divergence is not a gentle drift, it is an explosion that '
+              'reaches infinity or NaN in seconds. Print your loss every step '
+              'for the first ten steps — you will see it immediately.',
           startMs: 456000,
           endMs: 534000,
         ),
@@ -1121,12 +1175,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd8',
           speaker: 'Guest',
           text:
-              'Now scale it up. Real networks have curvature that differs by '
-              'orders of magnitude between directions and changes as you move. '
-              'One scalar learning rate has to be safe in the steepest '
-              'direction, which makes it far too small for the shallow ones. '
-              'That single fact is the origin of momentum, of adaptive methods, '
-              'of normalisation layers, and of nearly every schedule anyone has '
+              'Scale it up. Real networks have curvature that differs by '
+              'orders of magnitude between different weight dimensions and '
+              'changes as you move through the landscape. One scalar learning '
+              'rate has to be safe in the steepest direction — the one where '
+              'you will diverge first — which makes it absurdly small for the '
+              'shallow directions. That single mismatch between a scalar '
+              'step size and a wildly anisotropic landscape is the origin '
+              'of momentum, of adaptive methods like Adam, of normalisation '
+              'layers, and of nearly every learning rate schedule ever '
               'proposed.',
           startMs: 534000,
           endMs: 612000,
@@ -1135,13 +1192,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd9',
           speaker: 'Host',
           text:
-              'Schedules deserve a moment. Warmup ramps the rate up from near '
-              'zero over the first few hundred or few thousand steps, and it '
-              'matters most for very large models, where the first gradients '
-              'from a random initialisation are enormous and one full-size step '
-              'can wreck the run permanently. Cosine annealing then sweeps the '
-              'rate smoothly down so the end of training settles into a '
-              'minimum rather than skating across it.',
+              'Schedules deserve attention. Warmup ramps the learning rate '
+              'from near zero over the first few hundred steps. It matters '
+              'most for very large models where the first gradients from a '
+              'random initialisation are enormous — one full-size step can '
+              'permanently wreck the run. Cosine annealing then sweeps the '
+              'rate smoothly down toward zero so training settles gracefully '
+              'into a minimum rather than bouncing across it. The combination '
+              'of warmup plus cosine decay is the default in essentially '
+              'every modern training recipe.',
           startMs: 612000,
           endMs: 690000,
         ),
@@ -1149,14 +1208,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd10',
           speaker: 'Guest',
           text:
-              'Batch size is the other dial, and I would frame it as a noise '
-              'control rather than a speed control. Larger batches give a more '
-              'accurate gradient and fewer updates per epoch; smaller batches '
-              'give a noisier gradient more often. The error in the estimate '
-              'falls with the square root of the batch size, so going from '
-              'thirty-two to a thousand costs thirty times the compute for '
-              'about five times the accuracy — which is why enormous batches '
-              'need learning rate adjustments to pay off at all.',
+              'Batch size as a noise dial. Larger batches give a more '
+              'accurate gradient estimate and fewer updates per epoch. '
+              'Smaller batches give a noisier gradient more often. The error '
+              'in the estimate falls with the square root of batch size — '
+              'going from 32 to 1024 costs 32 times the compute for roughly '
+              '5.7 times the accuracy. Enormous batches need learning rate '
+              'adjustments to pay off at all, and there is a practical '
+              'ceiling where the gradient is essentially exact and further '
+              'increases just waste compute.',
           startMs: 690000,
           endMs: 772000,
         ),
@@ -1164,17 +1224,17 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd11',
           speaker: 'Host',
           text:
-              'Closing on momentum and its descendants. Momentum keeps a '
-              'decaying average of past gradients, so agreement compounds and '
-              'oscillation cancels, and the effective step approaches one over '
-              'one minus beta. Adam adds a second average — of the squared '
-              'gradient — and divides by its square root, giving every '
-              'parameter its own step size. That is genuinely all Adam is: '
-              'momentum, plus a per-parameter scale, plus a bias correction '
-              'because both averages start at zero. It is more forgiving about '
-              'the learning rate, which is why it is the default, and a '
-              'well-tuned SGD with momentum still wins often enough that you '
-              'should not treat the question as closed.',
+              'Closing on momentum and its most famous descendant. Momentum '
+              'keeps a decaying average of past gradients — agreement '
+              'compounds, oscillation cancels, effective step approaches '
+              '1/(1-β) times the raw step. Adam adds a second buffer: the '
+              'average squared gradient. Dividing by its square root gives '
+              'every parameter its own adaptive step size. A weight with '
+              'historically tiny gradients gets a proportionally larger step; '
+              'a weight with consistently huge gradients gets a smaller one. '
+              'That is genuinely all Adam is: momentum plus per-parameter '
+              'scaling plus a bias correction because both averages start '
+              'at zero.',
           startMs: 772000,
           endMs: 858000,
         ),

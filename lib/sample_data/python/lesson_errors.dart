@@ -1,5 +1,6 @@
 import '../../models/content_block.dart';
 import '../../models/exercise.dart';
+import '../../models/game.dart';
 import '../../models/lesson.dart';
 import '../../models/podcast.dart';
 import '../../models/review.dart';
@@ -17,6 +18,7 @@ const Lesson errorsLesson = Lesson(
   read: _read,
   practice: _practice,
   podcast: _podcast,
+  play: _play,
   review: _review,
   sources: _sources,
 );
@@ -596,6 +598,127 @@ except KeyError as exc:
   ],
 );
 
+const GameContent _play = GameContent(
+  games: [
+    BugHuntGame(
+      id: 'game-errors-bare-except',
+      title: 'Find the bare except',
+      instructions: 'Tap the line that catches more than it should.',
+      code: '''
+def load(raw):
+    try:
+        return int(raw)
+    except:
+        print("bad value")
+        return None
+''',
+      buggyLine: 4,
+      explanation:
+          'A bare except: also catches KeyboardInterrupt and SystemExit, so '
+          'it can swallow Ctrl-C and an orderly shutdown. Name the specific '
+          'exception you expect, here ValueError.',
+      fixedCode: '''
+def load(raw):
+    try:
+        return int(raw)
+    except ValueError:
+        print("bad value")
+        return None
+''',
+    ),
+    FillBlankGame(
+      id: 'game-errors-try-shape',
+      title: 'Complete the try statement',
+      instructions: 'Type the two missing clause keywords, in order.',
+      code: '''
+try:
+    port = int(raw)
+except ValueError:
+    return None
+______:
+    print("parsed cleanly")
+    return port
+______:
+    print("done")
+''',
+      blanks: [
+        Blank(answer: 'else', hint: 'runs only on success'),
+        Blank(answer: 'finally', hint: 'always runs'),
+      ],
+    ),
+    OutputPredictorGame(
+      id: 'game-errors-try-order',
+      title: 'What does this print?',
+      instructions: 'Pick the order these lines print in.',
+      code: '''
+def f():
+    try:
+        print("try")
+    except ValueError:
+        print("except")
+    else:
+        print("else")
+    finally:
+        print("finally")
+
+
+f()
+''',
+      options: [
+        'try / except / finally',
+        'try / else / finally',
+        'try / finally',
+        'try / except / else / finally',
+      ],
+      correctIndex: 1,
+      explanation:
+          'Nothing raises, so except is skipped entirely. else runs because '
+          'the try block succeeded, and finally always runs last regardless '
+          'of what happened above it.',
+    ),
+    SyntaxScrambleGame(
+      id: 'game-errors-scramble',
+      title: 'Rebuild the custom exception',
+      instructions: 'Drag or use the arrows to put these lines back in order.',
+      lines: [
+        'class ConfigError(Exception):',
+        '    pass',
+        'def require(config, key):',
+        '    if key not in config:',
+        '        raise ConfigError(key)',
+        '    return config[key]',
+      ],
+    ),
+    TermMatchGame(
+      id: 'game-errors-terms',
+      title: 'Match the vocabulary',
+      instructions: 'Tap a term, then tap its definition.',
+      pairs: [
+        TermPair(
+          term: 'Exception hierarchy',
+          definition: 'Exceptions are classes, so except also catches subclasses.',
+        ),
+        TermPair(
+          term: 'EAFP',
+          definition: 'Try the operation and handle failure, rather than pre-checking.',
+        ),
+        TermPair(
+          term: 'Exception chaining',
+          definition: 'Linking a new exception to the one that caused it.',
+        ),
+        TermPair(
+          term: 'Bare raise',
+          definition: 'raise with no argument, re-raising the current exception.',
+        ),
+        TermPair(
+          term: 'finally',
+          definition: 'A clause that runs whether the try block failed or not.',
+        ),
+      ],
+    ),
+  ],
+);
+
 const PodcastScript _podcast = PodcastScript(
   variants: {
     PodcastVariant.concise: ScriptVariant(
@@ -606,11 +729,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c1',
           speaker: 'Host',
           text:
-              'Error handling, condensed. Exceptions are objects arranged in a '
-              'class hierarchy, and an except clause catches the class you name '
-              'plus everything below it. That is the fact that decides all your '
-              'handling: catch precisely, and you have documented which failure '
-              'you expected.',
+              'Error handling, condensed. Here\'s the analogy that makes exceptions click: think of '
+              'exceptions like a fire alarm system that tells you exactly which room is burning instead '
+              'of just making noise. Exceptions are objects arranged in a class hierarchy — like a family '
+              'tree where catching a parent catches all its children too. An except clause catches the '
+              'class you name plus everything below it. That single fact decides all your handling '
+              'strategy: catch precisely, and your code documents exactly which failure you expected '
+              'and planned for. Catch broadly, and you\'re hiding bugs you don\'t even know exist.',
           startMs: 0,
           endMs: 44000,
         ),
@@ -618,11 +743,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c2',
           speaker: 'Guest',
           text:
-              'So keep the try block tiny — one risky operation. Put the code '
-              'that depends on success in the else clause, and anything that '
-              'must happen either way in finally. Those four keywords each have '
-              'exactly one job, and using them properly makes the handling read '
-              'as documentation.',
+              'So here\'s the discipline: keep the try block tiny — one risky operation, like holding '
+              'only the egg you might drop, not the entire carton. Put the code that depends on success '
+              'in the else clause — "everything went fine, now let\'s use the result." Put anything that '
+              'must happen either way in finally — "whether we succeed or fail, close the door on the way '
+              'out." These four keywords — try, except, else, finally — each have exactly one job, and '
+              'using them properly makes your error handling read like clear documentation rather than '
+              'defensive noise.',
           startMs: 44000,
           endMs: 92000,
         ),
@@ -630,10 +757,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c3',
           speaker: 'Host',
           text:
-              'Never write a bare except. It catches KeyboardInterrupt and '
-              'SystemExit too, so it eats Ctrl-C and orderly shutdown. If you '
-              'really need a net, catch Exception, log it, and re-raise unless '
-              'you have a genuine reason not to.',
+              'One rule to tattoo on your brain: never write a bare "except:". Ever. It catches '
+              'KeyboardInterrupt and SystemExit too — so Ctrl-C stops working and your program can\'t even '
+              'shut down cleanly. It\'s like soundproofing your entire house because the smoke detector is '
+              'annoying — sure, you can\'t hear the alarm anymore, but you also can\'t hear someone knocking '
+              'on the door. If you genuinely need a catch-all safety net, catch Exception, log what happened, '
+              'and re-raise unless you have a documented, commented reason not to.',
           startMs: 92000,
           endMs: 134000,
         ),
@@ -641,10 +770,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c4',
           speaker: 'Guest',
           text:
-              'Python prefers asking forgiveness to asking permission. Just do '
-              'the operation and handle the failure, rather than checking first '
-              '— because between the check and the action the world can change, '
-              'and because try costs nothing when nothing goes wrong.',
+              'Python has a philosophy here that\'s different from many languages: EAFP — Easier to Ask '
+              'Forgiveness than Permission. Instead of checking "does this file exist?" and then opening it, '
+              'just open it and handle the FileNotFoundError if it happens. Why? Because between the check '
+              'and the action, the world can change — the file could be deleted, the key removed, the '
+              'connection dropped. Plus, try/except costs essentially nothing when no exception is raised. '
+              'It\'s like learning to ride a bike: you WILL fall. What matters isn\'t avoiding every fall — '
+              'it\'s knowing how to get back up, brush yourself off, and keep going.',
           startMs: 134000,
           endMs: 178000,
         ),
@@ -652,10 +784,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c5',
           speaker: 'Host',
           text:
-              'And when you translate a low-level error into your own, use '
-              'raise from, so the original stays attached as the cause. Cleanup '
-              'belongs in a context manager, not in a finally block you have to '
-              'remember to write.',
+              'And when you translate a low-level error into your own domain-specific exception, use '
+              '"raise NewError from original". This chains them together so the traceback says "the above '
+              'was the direct cause" — the original evidence stays attached. Cleanup — closing files, '
+              'releasing locks, rolling back transactions — belongs in a context manager with a with '
+              'statement, not in a finally block scattered across your codebase. Make the cleanup '
+              'reusable, not something you have to remember to copy-paste every time.',
           startMs: 178000,
           endMs: 210000,
         ),
@@ -669,12 +803,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 's1',
           speaker: 'Host',
           text:
-              'Exceptions today, and I want to reframe them at the start. In a '
-              'lot of languages an exception is an emergency. In Python it is '
-              'ordinary control flow — StopIteration ends every for loop you '
-              'have ever written. So the question is never "how do I avoid '
-              'exceptions", it is "which failures do I anticipate, and where do '
-              'I handle them".',
+              'Exceptions today, and I want to reframe them at the start because too many people treat '
+              'them as something to fear. In a lot of languages, an exception is an emergency — something '
+              'went catastrophically wrong. In Python, exceptions are ordinary control flow. StopIteration '
+              'ends every single for loop you\'ve ever written — that\'s not a crash, that\'s the loop saying '
+              '"I\'m done." So the question is never "how do I avoid exceptions." It\'s "which failures do I '
+              'anticipate, and where in my program is the right place to handle them?" It\'s like driving a '
+              'car: you don\'t try to avoid ever touching the brake pedal. You learn when and how to brake '
+              'effectively.',
           startMs: 0,
           endMs: 58000,
         ),
@@ -682,11 +818,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 's2',
           speaker: 'Guest',
           text:
-              'The machinery is simple. Raising an exception unwinds the stack '
-              'frame by frame until some try block is willing to handle it. If '
-              'nothing is, the interpreter prints a traceback and exits with a '
-              'non-zero status. Exceptions are classes, so an except clause '
-              'catches the named class and every subclass of it.',
+              'The machinery is refreshingly simple. Raising an exception unwinds the call stack frame '
+              'by frame — like peeling layers of an onion — until some try block says "I\'ll handle this." '
+              'If nothing does, the interpreter prints a traceback and exits with a non-zero status code. '
+              'Exceptions are classes, which is the key insight: an except clause catches the named class '
+              'and every subclass of it. So "except LookupError" catches both KeyError and IndexError in '
+              'one clause because they\'re both children of LookupError. It\'s a family tree, and catching '
+              'the parent nets you all the kids.',
           startMs: 58000,
           endMs: 122000,
         ),
@@ -694,12 +832,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 's3',
           speaker: 'Host',
           text:
-              'Which makes the hierarchy worth learning. ValueError: right '
-              'type, wrong value. TypeError: wrong type entirely. LookupError '
-              'is the parent of KeyError and IndexError, so you can catch both '
-              'at once. OSError covers file and network problems and carries an '
-              'errno. And everything you should be catching lives under '
-              'Exception.',
+              'Which makes the hierarchy worth actually learning — it\'s not just academic trivia. '
+              'ValueError means "right type, wrong value" — like int("hello"). TypeError means "wrong type '
+              'entirely" — like adding a string to an integer. LookupError is the parent of both KeyError '
+              'and IndexError, so one handler can catch both missing dict keys and out-of-range list '
+              'accesses. OSError covers file and network problems and carries an errno attribute with the '
+              'operating system\'s error code. And everything an application should normally catch lives '
+              'under Exception — that\'s your safety net\'s safety net.',
           startMs: 122000,
           endMs: 190000,
         ),
@@ -707,11 +846,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 's4',
           speaker: 'Guest',
           text:
-              'Above Exception sits BaseException, which also has '
-              'KeyboardInterrupt, SystemExit and GeneratorExit under it. Those '
-              'are not errors — they are the program being asked to stop. That '
-              'is exactly why a bare except is a bug: it catches those too, and '
-              'suddenly Ctrl-C does nothing.',
+              'Above Exception sits BaseException, and this is where you need to pay attention. '
+              'BaseException also parents KeyboardInterrupt — that\'s Ctrl-C — SystemExit — that\'s '
+              'sys.exit() — and GeneratorExit. These aren\'t errors. They\'re the program being politely '
+              'asked to stop what it\'s doing. That\'s exactly why a bare "except:" is a bug, not a style '
+              'choice: it catches those too, and suddenly pressing Ctrl-C does absolutely nothing. Your '
+              'program just sits there, ignoring the user frantically trying to stop it. Always catch '
+              'Exception or something more specific.',
           startMs: 190000,
           endMs: 250000,
         ),
@@ -719,12 +860,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 's5',
           speaker: 'Host',
           text:
-              'On structure: keep the try block down to the single operation '
-              'that can fail. Everything that depends on success goes in else. '
-              'Cleanup goes in finally, which runs even when the block returns '
-              'or raises. That discipline stops you catching a KeyError from '
-              'your own follow-up code and blaming the operation you were '
-              'guarding.',
+              'On structure: keep the try block down to the single operation that can fail. Not two '
+              'operations, not three — one. Everything that depends on success goes in else. Cleanup goes '
+              'in finally, which runs even when the block returns or raises — it\'s the "no matter what" '
+              'clause. This discipline stops the most insidious debugging scenario: catching a KeyError '
+              'from your own follow-up code and mistakenly blaming the operation you were guarding. The '
+              'bug isn\'t where the traceback says it is, and you waste hours chasing a phantom.',
           startMs: 250000,
           endMs: 316000,
         ),
@@ -732,12 +873,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 's6',
           speaker: 'Guest',
           text:
-              'When you write your own exceptions, give the package a single '
-              'base class and derive the rest from it, so a user can catch '
-              'everything from your library in one clause. Put structured '
-              'detail on the object — the field name, the path, the status code '
-              '— because handlers need data, and parsing your message string is '
-              'not an API.',
+              'When you write your own exceptions, give your package a single base class and derive '
+              'everything from it. Why? So a user of your library can catch everything your code raises '
+              'with one clause: "except MyLibError." Put structured detail on the exception object — the '
+              'field name that was missing, the file path that couldn\'t be read, the HTTP status code '
+              'that came back — because handlers need data to make decisions, and parsing your error '
+              'message string with regex is not an API. Think of custom exceptions like well-designed '
+              'error reports, not just error messages.',
           startMs: 316000,
           endMs: 384000,
         ),
@@ -745,12 +887,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 's7',
           speaker: 'Host',
           text:
-              'Then chaining. If you catch a low-level error and raise your own '
-              'domain error, write raise MyError from the original. The '
-              'traceback then says "the above was the direct cause" and nobody '
-              'has to guess. A bare raise inside an except block re-raises with '
-              'the original traceback fully intact — much better than raising a '
-              'fresh copy.',
+              'Then chaining — the feature people discover too late. If you catch a low-level error — '
+              'a ValueError from int() — and raise your own domain error, write "raise MyError(...) from '
+              'original". The traceback then explicitly says "the above was the direct cause" and nobody '
+              'has to guess where the real problem originated. A bare "raise" inside an except block '
+              're-raises the current exception with its original traceback perfectly intact — much better '
+              'than raising a fresh copy of the same exception, which would lose the original stack trace '
+              'and make debugging nearly impossible. The traceback is evidence; preserve it.',
           startMs: 384000,
           endMs: 442000,
         ),
@@ -758,10 +901,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 's8',
           speaker: 'Guest',
           text:
-              'And put cleanup in a context manager. Files, locks, '
-              'transactions, temporary directories — all of it. '
-              'contextlib.contextmanager makes writing one about five lines: '
-              'setup, yield, teardown in a finally.',
+              'And put cleanup in a context manager. Files, locks, database transactions, temporary '
+              'directories — all of it belongs inside a "with" block. contextlib.contextmanager makes '
+              'writing one about five lines: setup before yield, teardown after yield in a finally block. '
+              'It\'s like having an automatic cleanup crew that shows up whether your party was a success '
+              'or a disaster. The "with" statement guarantees __exit__ runs even if the body raised, '
+              'returned, or was interrupted. Once you start using context managers for all resource '
+              'management, you\'ll wonder why you ever wrote a bare try/finally by hand.',
           startMs: 442000,
           endMs: 480000,
         ),
@@ -775,11 +921,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd1',
           speaker: 'Host',
           text:
-              'The long version on exceptions. We will cover the hierarchy in '
-              'detail, the cost model, chaining and tracebacks, EAFP versus '
-              'LBYL and why it is about races rather than style, exception '
-              'groups, and how to decide where in a system a failure should be '
-              'handled at all.',
+              'The long version on exceptions — we\'re going to understand error handling not as a '
+              'chore but as a design tool. Here\'s the mental model: exceptions are like a fire alarm '
+              'system with a detailed display panel. A bad alarm just screams — you know something is '
+              'wrong but not what. A good alarm tells you "smoke detected in server room B, temperature '
+              'rising" so you can respond precisely. That\'s what a well-designed exception hierarchy '
+              'gives you. Today we\'re covering the hierarchy in detail, the cost model that explains '
+              'why try/except is faster than if/else on the happy path, chaining and tracebacks, EAFP '
+              'versus LBYL and why it\'s actually about race conditions rather than style, exception '
+              'groups for concurrent failures, and how to decide where in a system a failure should '
+              'be handled at all.',
           startMs: 0,
           endMs: 64000,
         ),
@@ -787,12 +938,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd2',
           speaker: 'Guest',
           text:
-              'Start with the tree. BaseException is the root. Directly under '
-              'it are SystemExit, KeyboardInterrupt, GeneratorExit and '
-              'Exception. Everything an application should normally catch is '
-              'under Exception; the other three signal that the program or a '
-              'generator is being shut down, and swallowing them turns a clean '
-              'exit into a hang.',
+              'Start with the tree — this is the map you\'ll navigate for your entire Python career. '
+              'BaseException is the root of everything. Directly under it are four branches: SystemExit '
+              '(raised by sys.exit()), KeyboardInterrupt (Ctrl-C), GeneratorExit (when a generator is '
+              'closed), and Exception — the branch where all normal errors live. Everything an application '
+              'should normally catch is under Exception. The other three signal that the program or a '
+              'generator is being shut down, and swallowing them turns what should be a clean exit into '
+              'a hung process. It\'s like the difference between a "stop" sign and a "road closed" barrier '
+              '— you handle them very differently.',
           startMs: 64000,
           endMs: 146000,
         ),
@@ -800,13 +953,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd3',
           speaker: 'Host',
           text:
-              'Under Exception the useful groupings are ArithmeticError over '
-              'ZeroDivisionError and OverflowError, LookupError over IndexError '
-              'and KeyError, and OSError which absorbed the old IOError and '
-              'now has friendly subclasses like FileNotFoundError, '
-              'PermissionError and TimeoutError. Catch the subclass when you '
-              'know exactly what you expect, the parent when several siblings '
-              'genuinely share handling.',
+              'Under Exception, the useful groupings give you leverage. ArithmeticError is the parent '
+              'of ZeroDivisionError and OverflowError — catch the parent and you handle any math gone '
+              'wrong. LookupError sits above IndexError and KeyError — one handler for any "thing not '
+              'found" scenario. OSError absorbed the old IOError and now has wonderfully specific '
+              'subclasses: FileNotFoundError, PermissionError, TimeoutError, ConnectionError — each '
+              'mapped from the operating system\'s errno codes. Catch the subclass when you know exactly '
+              'what you expect ("this file might not exist"), catch the parent when several siblings '
+              'genuinely share the same handling ("any OS-level problem gets logged and retried").',
           startMs: 146000,
           endMs: 240000,
         ),
@@ -814,13 +968,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd4',
           speaker: 'Guest',
           text:
-              'Now the cost model, because it drives the EAFP preference. '
-              'Entering a try block is essentially free in modern CPython — '
-              'since 3.11 there is zero cost on the non-raising path, the '
-              'handler information lives in a side table. Raising and catching '
-              'is not free: building the exception and its traceback costs '
-              'roughly a microsecond. So exceptions are cheap for the '
-              'exceptional case and bad as a loop mechanism.',
+              'Now the cost model, because it\'s what drives the whole EAFP philosophy and everyone gets '
+              'it wrong. Entering a try block is essentially free in modern CPython — since 3.11, there\'s '
+              'zero overhead on the non-raising path because the handler information lives in a side table '
+              'that the interpreter only consults when an exception actually occurs. Raising and catching '
+              'is not free: building the exception object and its traceback costs roughly a microsecond. '
+              'So exceptions are cheap for the exceptional case and terrible as a loop mechanism — don\'t '
+              'use raise/except as a replacement for if/else in a tight loop. But for guarding an '
+              'operation that normally succeeds? The try block costs you literally nothing.',
           startMs: 240000,
           endMs: 336000,
         ),
@@ -828,12 +983,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd5',
           speaker: 'Host',
           text:
-              'Which brings us to look-before-you-leap. The real objection is '
-              'not verbosity, it is the race. Between "if the file exists" and '
-              '"open the file", another process can delete it. Between "if the '
-              'key is in the dict" and reading it, another thread can pop it. '
-              'The check does not prevent the failure; it just makes you write '
-              'the handler anyway, or ship a bug.',
+              'Which brings us to LBYL — Look Before You Leap — and why it\'s actually about correctness, '
+              'not just style preference. The real objection to "if the file exists: open the file" isn\'t '
+              'verbosity — it\'s the race condition. Between checking and acting, another process can '
+              'delete the file. Between "if key in dict" and reading it, another thread can pop that key. '
+              'The check doesn\'t prevent the failure; it just makes the window between check and action '
+              'slightly narrower. You still need the error handler anyway, and now you have two code paths '
+              'to maintain. It\'s like checking if a parking spot is empty from a block away — by the time '
+              'you arrive, someone else may have taken it. Just drive up and handle it if it\'s occupied.',
           startMs: 336000,
           endMs: 424000,
         ),
@@ -841,12 +998,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd6',
           speaker: 'Guest',
           text:
-              'Chaining is the next thing people under-use. Raise inside an '
-              'except block and Python sets dunder-context automatically, which '
-              'prints as "during handling of the above exception". Say raise X '
-              'from Y and it sets dunder-cause, which prints as "the above was '
-              'the direct cause". The first usually means you made a mistake '
-              'while handling; the second means you translated deliberately.',
+              'Chaining is the next thing people dramatically under-use, and it\'s one of Python\'s best '
+              'features. If you raise inside an except block, Python automatically sets __context__ on '
+              'the new exception linking it to the original, and prints "During handling of the above '
+              'exception, another exception occurred." That usually means you made a mistake while '
+              'handling — your handler itself crashed. When you say "raise NewError(...) from original", '
+              'Python sets __cause__ instead and prints "The above exception was the direct cause." '
+              'That means you deliberately translated a low-level failure into your own vocabulary. '
+              'The first reads like an accident; the second reads like intentional design.',
           startMs: 424000,
           endMs: 512000,
         ),
@@ -854,11 +1013,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd7',
           speaker: 'Host',
           text:
-              'And there is raise X from None, which suppresses the chain. It '
-              'has a legitimate use — hiding irrelevant internals from a '
-              'library boundary — but every time you use it you are deleting '
-              'evidence someone will want at three in the morning. Default to '
-              'keeping the cause.',
+              'And there\'s "raise X from None" which suppresses the chain entirely. It has a legitimate '
+              'use — hiding irrelevant internal implementation details at a library boundary so users '
+              'don\'t see traces of your private helper functions. But every time you use it, you are '
+              'actively deleting evidence that someone — possibly future you at 3 AM — will desperately '
+              'want. Default to keeping the cause chain intact. Only suppress it when the internals would '
+              'genuinely confuse rather than help. The traceback is a story; don\'t rip out the chapters '
+              'unless they\'re in a language the reader doesn\'t speak.',
           startMs: 512000,
           endMs: 580000,
         ),
@@ -866,12 +1027,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd8',
           speaker: 'Guest',
           text:
-              'Python 3.11 added exception groups and except-star. When a '
-              'concurrent operation fails in several ways at once — say five '
-              'tasks in a task group, three of which raise — a single exception '
-              'cannot represent that. ExceptionGroup holds them all and '
-              'except-star lets you handle each type present, leaving the rest '
-              'to propagate as a smaller group.',
+              'Python 3.11 added exception groups and except*, and this was a genuinely necessary '
+              'evolution. When concurrent operations fail — say five tasks in a TaskGroup, three of '
+              'which raise different exceptions — a single exception object cannot represent that reality. '
+              'ExceptionGroup wraps them all together like a bundle. except* lets you handle each type '
+              'present in the group, pulling out the ones you can deal with and letting the rest continue '
+              'propagating as a smaller regrouped set. It\'s like sorting mail: "I\'ll handle all the '
+              'bills, send the letters to the living room, and the junk mail goes straight to recycling." '
+              'This is the error handling equivalent of structured concurrency — failures have structure '
+              'too.',
           startMs: 580000,
           endMs: 668000,
         ),
@@ -879,12 +1043,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd9',
           speaker: 'Host',
           text:
-              'On placement: handle an exception where you can actually do '
-              'something about it. That is usually far up the stack — a request '
-              'handler, a retry loop, a command-line entry point — not in the '
-              'function that raised. A try/except that catches, logs and '
-              're-raises at every level produces five traceback fragments for '
-              'one failure and helps nobody.',
+              'On placement — where should you actually handle exceptions? The answer is almost never '
+              '"right where they happened." Handle an exception where you can actually do something '
+              'meaningful about it. That\'s usually far up the call stack — a request handler that can '
+              'return a 500, a retry loop that can try again, a command-line entry point that can print '
+              'a user-friendly message and exit. A try/except that catches, logs, and re-raises at every '
+              'intermediate level produces five separate traceback fragments for one failure and helps '
+              'exactly nobody. Let exceptions bubble up to the level that has context to make a decision. '
+              'It\'s like a company: the intern shouldn\'t decide strategy, and the CEO shouldn\'t fix the '
+              'printer. Each level handles what it has authority and context for.',
           startMs: 668000,
           endMs: 750000,
         ),
@@ -892,11 +1059,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd10',
           speaker: 'Guest',
           text:
-              'Two rules to finish. Never let an except body be just "pass" '
-              'unless you have written a comment explaining why the failure is '
-              'genuinely irrelevant. And use assert only for programmer errors '
-              'you never expect, never for validating input — assertions are '
-              'stripped entirely when Python runs with the -O flag.',
+              'Two rules to finish, and they\'ve saved me more times than I can count. First: never let '
+              'an except body be just "pass" — the silent exception swallower. Unless you have written '
+              'a clear comment explaining exactly why this specific failure is genuinely, provably '
+              'irrelevant, it\'s a bug waiting to happen. Second: use assert only for programmer errors '
+              '— "this should be mathematically impossible" — never for validating user input or external '
+              'data. Assertions are stripped entirely when Python runs with the -O (optimize) flag, '
+              'which means your production deployment might be running without your safety checks. That\'s '
+              'not a bug — it\'s a design choice built into the language. Validate with if/raise, assert '
+              'for invariants.',
           startMs: 750000,
           endMs: 834000,
         ),

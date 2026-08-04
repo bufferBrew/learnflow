@@ -26,6 +26,8 @@ class ProgressProvider extends ChangeNotifier {
   void markReviewed(String lessonId) =>
       setMode(lessonId, LessonMode.review, true);
 
+  void markPlayed(String lessonId) => setMode(lessonId, LessonMode.play, true);
+
   void setMode(String lessonId, LessonMode mode, bool done) {
     final current = progressFor(lessonId);
     if (current.isDone(mode) == done) return;

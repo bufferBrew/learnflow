@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:learnflow/models/content_block.dart';
 import 'package:learnflow/models/exercise.dart';
+import 'package:learnflow/models/game.dart';
 import 'package:learnflow/models/lesson.dart';
 import 'package:learnflow/models/podcast.dart';
 import 'package:learnflow/models/review.dart';
@@ -18,6 +19,7 @@ Lesson _lesson(String id) => Lesson(
   read: const ReadContent(sections: <Section>[]),
   practice: const PracticeContent(exercises: <Exercise>[]),
   podcast: const PodcastScript(variants: <PodcastVariant, ScriptVariant>{}),
+  play: const GameContent(games: <Game>[]),
   review: const ReviewContent(
     summaryCards: <SummaryCard>[],
     keyConcepts: <KeyConcept>[],
@@ -44,25 +46,30 @@ void main() {
   });
 
   group('setMode / mark helpers', () {
-    test('markRead, markPracticed, markListened and markReviewed each flip one flag', () {
-      final ProgressProvider progress = ProgressProvider();
-      const String id = 'l1';
+    test(
+      'markRead, markPracticed, markListened, markReviewed and markPlayed each flip one flag',
+      () {
+        final ProgressProvider progress = ProgressProvider();
+        const String id = 'l1';
 
-      progress.markRead(id);
-      expect(progress.progressFor(id).isDone(LessonMode.read), isTrue);
-      expect(progress.progressFor(id).isDone(LessonMode.practice), isFalse);
+        progress.markRead(id);
+        expect(progress.progressFor(id).isDone(LessonMode.read), isTrue);
+        expect(progress.progressFor(id).isDone(LessonMode.practice), isFalse);
 
-      progress.markPracticed(id);
-      progress.markListened(id);
-      progress.markReviewed(id);
+        progress.markPracticed(id);
+        progress.markListened(id);
+        progress.markReviewed(id);
+        progress.markPlayed(id);
 
-      final record = progress.progressFor(id);
-      expect(record.isDone(LessonMode.read), isTrue);
-      expect(record.isDone(LessonMode.practice), isTrue);
-      expect(record.isDone(LessonMode.listen), isTrue);
-      expect(record.isDone(LessonMode.review), isTrue);
-      expect(record.isComplete, isTrue);
-    });
+        final record = progress.progressFor(id);
+        expect(record.isDone(LessonMode.read), isTrue);
+        expect(record.isDone(LessonMode.practice), isTrue);
+        expect(record.isDone(LessonMode.listen), isTrue);
+        expect(record.isDone(LessonMode.review), isTrue);
+        expect(record.isDone(LessonMode.play), isTrue);
+        expect(record.isComplete, isTrue);
+      },
+    );
 
     test('setMode is a no-op, and does not notify, when the value already matches', () {
       final ProgressProvider progress = ProgressProvider();
@@ -86,16 +93,17 @@ void main() {
       expect(progress.progressFor('l1').isStarted, isFalse);
     });
 
-    test('completedAt is set once all four modes are done, and is not cleared by un-marking one', () {
+    test('completedAt is set once all five modes are done, and is not cleared by un-marking one', () {
       final ProgressProvider progress = ProgressProvider();
       const String id = 'l1';
 
       progress.markRead(id);
       progress.markPracticed(id);
       progress.markListened(id);
+      progress.markReviewed(id);
       expect(progress.progressFor(id).completedAt, isNull);
 
-      progress.markReviewed(id);
+      progress.markPlayed(id);
       final DateTime? completedAt = progress.progressFor(id).completedAt;
       expect(completedAt, isNotNull);
 
@@ -162,11 +170,11 @@ void main() {
         lessons: <Lesson>[a, b],
       );
 
-      // 2 lessons x 4 modes = 8 cells; mark 2 of them.
+      // 2 lessons x 5 modes = 10 cells; mark 2 of them.
       progress.markRead('a');
       progress.markPracticed('a');
 
-      expect(progress.moduleCompletion(module), closeTo(2 / 8, 1e-9));
+      expect(progress.moduleCompletion(module), closeTo(2 / 10, 1e-9));
 
       // Completing every mode on both lessons reaches exactly 1.0.
       for (final LessonMode mode in LessonMode.values) {
@@ -192,8 +200,8 @@ void main() {
       );
 
       progress.markRead('a');
-      // 1 of (2 lessons x 4 modes) = 8 cells done.
-      expect(progress.topicCompletion(topic), closeTo(1 / 8, 1e-9));
+      // 1 of (2 lessons x 5 modes) = 10 cells done.
+      expect(progress.topicCompletion(topic), closeTo(1 / 10, 1e-9));
     });
   });
 

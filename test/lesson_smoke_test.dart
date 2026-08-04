@@ -10,6 +10,7 @@ import 'package:learnflow/sample_data/python/lesson_control_flow.dart';
 import 'package:learnflow/sample_data/python/lesson_environments.dart';
 import 'package:learnflow/screens/lesson_detail_screen.dart';
 import 'package:learnflow/state/bookmark_provider.dart';
+import 'package:learnflow/state/game_play_provider.dart';
 import 'package:learnflow/state/lesson_library.dart';
 import 'package:learnflow/state/podcast_playback_provider.dart';
 import 'package:learnflow/state/progress_provider.dart';
@@ -23,7 +24,7 @@ import 'package:provider/provider.dart';
 /// blocks in languages other than Python (bash/toml), collapsible asides — is
 /// exactly where a rendering exception hides, and no single lesson exercises
 /// all of it. This pumps a real [LessonDetailScreen], sourced straight from
-/// the production catalogue, across all four modes for at least one lesson per
+/// the production catalogue, across all five modes for at least one lesson per
 /// topic.
 Future<void> _pumpLessonDetail(
   WidgetTester tester,
@@ -52,6 +53,7 @@ Future<void> _pumpLessonDetail(
         ),
         ChangeNotifierProvider<ResumeProvider>(create: (_) => ResumeProvider()),
         ChangeNotifierProvider<PodcastPlaybackProvider>.value(value: playback),
+        ChangeNotifierProvider<GamePlayProvider>(create: (_) => GamePlayProvider()),
       ],
       child: MaterialApp(
         theme: AppTheme.light,
@@ -91,7 +93,7 @@ void main() {
 
   for (final MapEntry<String, Lesson> entry in lessonsUnderTest.entries) {
     testWidgets(
-      '${entry.key} renders all four modes without throwing',
+      '${entry.key} renders all five modes without throwing',
       (WidgetTester tester) async {
         final Lesson lesson = entry.value;
         await _pumpLessonDetail(tester, lesson);
@@ -105,6 +107,7 @@ void main() {
           LessonMode.practice,
           LessonMode.listen,
           LessonMode.review,
+          LessonMode.play,
           // Back to Read last, so a state left over from another tab would
           // surface here too.
           LessonMode.read,

@@ -1,5 +1,6 @@
 import '../../models/content_block.dart';
 import '../../models/exercise.dart';
+import '../../models/game.dart';
 import '../../models/lesson.dart';
 import '../../models/podcast.dart';
 import '../../models/review.dart';
@@ -17,6 +18,7 @@ const Lesson supervisedUnsupervisedLesson = Lesson(
   read: _read,
   practice: _practice,
   podcast: _podcast,
+  play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
 );
@@ -635,11 +637,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c1',
           speaker: 'Host',
           text:
-              'The paradigms, quickly. Supervised learning has labels: every '
-              'training row comes with the right answer, and the model learns '
-              'the mapping from inputs to answers. Unsupervised learning has '
-              'no labels at all, so instead of predicting it describes '
-              'structure in the data.',
+              'Supervised versus unsupervised in five minutes. Imagine '
+              'teaching a child. Supervised learning is flashcards — you show a '
+              'picture of a cat, you say "cat". The answer is right there on '
+              'the card. Unsupervised learning is handing the child a pile of '
+              'animal photos with no labels and saying "sort these into groups '
+              'that belong together." No answers provided — just structure to '
+              'be found.',
           startMs: 0,
           endMs: 42000,
         ),
@@ -647,10 +651,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c2',
           speaker: 'Guest',
           text:
-              'Supervised splits by label type. Categorical label, that is '
-              'classification. Continuous number, that is regression. It '
-              'sounds trivial but it determines your loss function and every '
-              'metric you will report, so settle it before you write any code.',
+              'Supervised splits by label type. Classification is multiple '
+              'choice — is this email spam or not, what animal is in this '
+              'photo. Regression is a number line — what price will this house '
+              'sell for, what will the temperature be. This sounds obvious but '
+              'it determines your loss function and every metric, so settle it '
+              'before you write any code. And remember: classifiers output '
+              'probabilities, not labels. You pick the cutoff.',
           startMs: 42000,
           endMs: 88000,
         ),
@@ -658,11 +665,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c3',
           speaker: 'Host',
           text:
-              'On the unsupervised side: clustering groups similar rows, '
-              'dimensionality reduction squeezes many features into a few, and '
-              'anomaly detection learns what normal looks like so it can flag '
-              'what is not. All three describe the data rather than predicting '
-              'anything about it.',
+              'On the unsupervised side, three tools cover most of the ground. '
+              'Clustering groups similar rows — like sorting a messy Lego pile '
+              'by colour with no bins labelled. Dimensionality reduction '
+              'squeezes fifty measurements into three that capture the gist — '
+              'like summarising a novel into a single page. Anomaly detection '
+              'learns what "normal" looks like and rings an alarm on anything '
+              'weird. All three describe the data rather than predict anything '
+              'about it.',
           startMs: 88000,
           endMs: 134000,
         ),
@@ -671,10 +681,12 @@ const PodcastScript _podcast = PodcastScript(
           speaker: 'Guest',
           text:
               'The hard part of unsupervised work is that there is no answer '
-              'key, so nothing tells you whether the output is right. You lean '
-              'on internal measures like silhouette, on stability across '
-              'random seeds, and mostly on whether the result is actually '
-              'useful downstream.',
+              'key. No ground truth means no accuracy score. You lean on '
+              'internal measures like silhouette — are my groups tight and '
+              'well-separated? You check stability — do I get the same clusters '
+              'if I rerun with a different random seed? And the most honest '
+              'test: does using these clusters or components make a downstream '
+              'task better? If not, the pretty groupings might just be noise.',
           startMs: 134000,
           endMs: 180000,
         ),
@@ -682,12 +694,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c5',
           speaker: 'Host',
           text:
-              'And two practical warnings. Standardise your features before '
-              'anything distance-based, or the biggest-unit column wins by '
-              'accident. And if you cannot observe the thing you care about, '
-              'think hard before substituting a proxy label — the model will '
-              'optimise the proxy exactly, including where it diverges from '
-              'what you meant.',
+              'Two practical warnings to close. First, standardise your '
+              'features before any distance-based method — k-means, PCA, '
+              'anything that uses "closeness". Otherwise the column measured in '
+              'the biggest units silently dominates and your results are '
+              'garbage. Second, beware the proxy label. If you cannot observe '
+              'what you actually care about and substitute something you can '
+              'measure, the model will optimise your proxy with terrifying '
+              'precision — including all the ways the proxy is wrong.',
           startMs: 180000,
           endMs: 222000,
         ),
@@ -701,11 +715,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's1',
           speaker: 'Host',
           text:
-              'The cleanest way into this topic is the API. In scikit-learn, '
-              'supervised estimators are fit of X comma y, and unsupervised '
-              'ones are fit of X. That single difference is the whole '
-              'taxonomy: is there a column of correct answers, or is there '
-              'not?',
+              'Let me open with an image that makes the whole taxonomy click. '
+              'Walk into a kitchen. On one counter are labelled jars — flour, '
+              'sugar, salt. You know exactly what each one is because someone '
+              'put a label on it. That is supervised learning: every example '
+              'comes with the answer attached. On the other counter are '
+              'unlabelled jars. You cannot name them, but you can sort them — '
+              'these three smell sweet, those two feel grainy. That is '
+              'unsupervised learning. The single question is: do you have '
+              'labels?',
           startMs: 0,
           endMs: 50000,
         ),
@@ -713,11 +731,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 's2',
           speaker: 'Guest',
           text:
-              'And labels are more expensive than beginners assume. Sometimes '
-              'a human annotates every row. Sometimes you wait months for the '
-              'outcome — did this loan default, did this customer churn. '
-              'Sometimes you take a proxy you can measure instead of the thing '
-              'you want. That cost is why the middle ground exists at all.',
+              'And labels are more expensive than people realise. Sometimes a '
+              'human annotates every row — a radiologist looking at scans, a '
+              'lawyer reviewing contracts. Sometimes you wait months for the '
+              'outcome to reveal itself — did this customer actually churn, '
+              'did this loan actually default. Sometimes you take a proxy you '
+              'can measure instead of the truth you want — clicks instead of '
+              'satisfaction, arrests instead of crime. That cost of labels is '
+              'the entire reason the middle ground exists: semi-supervised '
+              'learning with a few labelled examples and mountains of '
+              'unlabelled ones.',
           startMs: 50000,
           endMs: 116000,
         ),
@@ -725,12 +748,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 's3',
           speaker: 'Host',
           text:
-              'Within supervised, classification versus regression. Predicting '
-              'which of five categories: classification. Predicting a number '
-              'on a continuous scale: regression. And note that classifiers '
-              'really output probabilities — the hard label comes from a '
-              'threshold that you choose, and that choice is a product '
-              'decision, not a modelling one.',
+              'Within supervised learning, the split is by what comes out. '
+              'Classification gives you a category — spam or not spam, which of '
+              'ten digits, fraud or legitimate. Regression gives you a number — '
+              'a price, a temperature, a duration. And here is a subtlety that '
+              'matters: classifiers do not output labels, they output '
+              'probabilities. The model says "I am 73% sure this is fraud". '
+              'You decide the cutoff. Flag everything above 30% if missing '
+              'fraud is catastrophic. Flag only above 90% if blocking a '
+              'legitimate customer is the real disaster. That threshold is a '
+              'business decision wearing a statistical mask.',
           startMs: 116000,
           endMs: 182000,
         ),
@@ -738,12 +765,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 's4',
           speaker: 'Guest',
           text:
-              'Which is why quoting a single accuracy number is so '
-              'misleading. Precision is: of the things I flagged, how many '
-              'were real. Recall is: of the real ones, how many did I catch. '
-              'Drop the threshold and recall rises while precision falls, '
-              'every time. Decide which error costs more before you pick an '
-              'operating point.',
+              'Which is exactly why quoting "95% accuracy" without context is '
+              'misleading. Think of airport security. Precision says: of the '
+              'bags I flagged, how many actually had contraband? Recall says: '
+              'of the bags that actually had contraband, how many did I catch? '
+              'Lower the threshold and recall goes up — you catch more — but '
+              'precision drops — you also flag more innocent bags. Every time. '
+              'You decide which error costs more. The model just gives you the '
+              'probabilities; the trade-off is yours.',
           startMs: 182000,
           endMs: 250000,
         ),
@@ -751,12 +780,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's5',
           speaker: 'Host',
           text:
-              'Regression metrics have the same character. Mean absolute error '
-              'treats every pound of error equally. Mean squared error squares '
-              'them, so one enormous miss outweighs many small ones. If a '
-              'single catastrophic underestimate is what actually hurts your '
-              'business, that squaring is a feature. If not, MAE is easier to '
-              'explain and more robust to outliers.',
+              'Regression metrics have the same shape. Mean absolute error '
+              'treats every dollar of error equally — be off by ten dollars '
+              'ten times, that is a hundred. Mean squared error squares the '
+              'errors first, so one catastrophic miss of a hundred dollars '
+              'weighs as much as a hundred tiny misses of ten dollars each. If '
+              'your business truly cannot tolerate one enormous underestimation '
+              '— a hospital predicting bed demand, say — the squaring is a '
+              'feature. If not, MAE is easier to explain to stakeholders and '
+              'less thrown off by a single weird row.',
           startMs: 250000,
           endMs: 318000,
         ),
@@ -764,12 +796,17 @@ const PodcastScript _podcast = PodcastScript(
           id: 's6',
           speaker: 'Guest',
           text:
-              'Unsupervised side. K-means is fast and assumes roughly '
-              'spherical, similar-sized clusters, and it makes you pick k. '
-              'DBSCAN grows clusters from dense regions, finds arbitrary '
-              'shapes, picks its own count and can label points as noise. PCA '
-              'is the linear compressor: it finds the directions of greatest '
-              'variance and keeps the leading ones.',
+              'Over to unsupervised. K-means is the workhorse: pick K, scatter '
+              'K centres randomly, assign every point to the nearest centre, '
+              'move each centre to the average of its members, repeat until '
+              'stable. It is fast and it assumes your groups are roughly '
+              'spherical blobs of similar size. DBSCAN takes a different '
+              'approach — it grows clusters from dense neighbourhoods, so it '
+              'finds arbitrary shapes, figures out its own number of clusters, '
+              'and can label sparse points as noise rather than forcing them '
+              'into a group. PCA is the linear compressor: find the directions '
+              'with the most spread in your data and project everything onto '
+              'just the top few.',
           startMs: 318000,
           endMs: 388000,
         ),
@@ -777,12 +814,17 @@ const PodcastScript _podcast = PodcastScript(
           id: 's7',
           speaker: 'Host',
           text:
-              'The evaluation problem is real. With no ground truth you fall '
-              'back on three things: internal measures like silhouette that '
-              'score compactness and separation, stability across seeds and '
-              'subsamples, and downstream usefulness. That last one is the '
-              'honest test — put the clusters or components into a supervised '
-              'pipeline and see whether the score improves.',
+              'The evaluation problem with unsupervised methods is real and '
+              'uncomfortable. No answer key means no accuracy score. You fall '
+              'back on three things. Internal measures like silhouette that '
+              'score whether your clusters are tight and well-separated — '
+              'but they reward whatever shape the algorithm naturally '
+              'produces. Stability across random seeds and subsamples — if '
+              'rerunning gives you different groups, you are describing noise. '
+              'And the most honest test: downstream usefulness. Put those '
+              'clusters or compressed features into a supervised pipeline. '
+              'Does the score improve? If not, your beautiful clusters might '
+              'be an expensive way of doing nothing.',
           startMs: 388000,
           endMs: 452000,
         ),
@@ -790,12 +832,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's8',
           speaker: 'Guest',
           text:
-              'One rule to leave with: any unsupervised step that learns '
-              'statistics — a scaler, PCA — must be fitted inside the '
-              'cross-validation loop, on the training fold only. Fit PCA on '
-              'the whole dataset first and you have leaked the validation set '
-              'into your features before choosing a model. Wrap it in a '
-              'Pipeline and the correct behaviour is free.',
+              'One rule to leave with, and it connects back to everything we '
+              'have said about honest evaluation. Any unsupervised step that '
+              'learns statistics — a scaler, PCA, an imputer — must be fitted '
+              'inside the cross-validation loop, on the training fold only. '
+              'Fit PCA on the entire dataset before splitting and you have '
+              'leaked information from the test set into your features before '
+              'you have even picked a model. Your validation score is now '
+              'inflated in a way that disappears the moment you deploy. Wrap '
+              'everything in a Pipeline and this correct behaviour is free.',
           startMs: 452000,
           endMs: 504000,
         ),
@@ -809,12 +854,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd1',
           speaker: 'Host',
           text:
-              'Long form on learning paradigms. The plan: what supervision '
-              'actually is, why the label is the expensive part, the full '
-              'supervised metric landscape, the unsupervised toolkit and its '
-              'evaluation problem, the self-supervised revolution, and how to '
-              'frame a real problem without picking the wrong paradigm '
-              'entirely.',
+              'Deep dive on learning paradigms. Picture a detective\'s desk. '
+              'On the left are case files where the culprit is already circled '
+              'in red — that is supervised learning. On the right are piles of '
+              'evidence with no conclusions drawn — that is unsupervised. And '
+              'in the middle, a clever trick: the detective takes the unlabelled '
+              'evidence and creates puzzles from it — hide a detail, guess what '
+              'was hidden — that is self-supervised learning, and it is how '
+              'every modern language model gets its start.',
           startMs: 0,
           endMs: 64000,
         ),
@@ -822,12 +869,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd2',
           speaker: 'Guest',
           text:
-              'Supervision means an external signal telling the algorithm what '
-              'the right output was. That signal defines the loss, and the '
-              'loss defines everything the model becomes. So it is worth '
-              'saying plainly: a supervised model does not learn the truth. It '
-              'learns whatever the labels encode, faithfully, including their '
-              'errors and their biases.',
+              'Let me say something uncomfortable that frames the whole '
+              'discussion. A supervised model does not learn the truth. It '
+              'learns whatever the labels encode — faithfully, including every '
+              'error, every bias, every lazy shortcut the annotators took. If '
+              'your labels are "who was convicted of the crime", the model '
+              'learns to predict convictions, not crimes. If your labels are '
+              '"clicks", the model learns to predict what gets clicked, not '
+              'what is useful. The model is a mirror held up to your labelling '
+              'process. It reflects, it does not correct.',
           startMs: 64000,
           endMs: 142000,
         ),
@@ -835,12 +885,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd3',
           speaker: 'Host',
           text:
-              'Which is why label provenance is a first-class question. Who '
-              'produced these labels, under what instructions, with what '
-              'agreement rate between annotators? If two humans disagree '
-              'twenty percent of the time, your model cannot meaningfully '
-              'exceed eighty percent, and chasing the last few points is '
-              'chasing annotator noise.',
+              'Which makes label provenance a first-class question that '
+              'deserves more attention than architecture choice. Who produced '
+              'these labels? Under what instructions? With what agreement rate '
+              'between different annotators? If two radiologists disagree on '
+              'twenty percent of scans, your model cannot meaningfully exceed '
+              'eighty percent — the remaining gap is not modelling error, it '
+              'is annotator noise. Chasing those last few points is chasing '
+              'the variance in human judgment, and no amount of GPU time '
+              'resolves a genuine ambiguity in the task itself.',
           startMs: 142000,
           endMs: 214000,
         ),
@@ -848,13 +901,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd4',
           speaker: 'Guest',
           text:
-              'Classification metrics deserve unpacking. Start with the '
-              'confusion matrix — true positives, false positives, true '
-              'negatives, false negatives — because every metric is a ratio '
-              'built from those four cells. Precision is TP over predicted '
-              'positive. Recall is TP over actual positive. F1 is their '
-              'harmonic mean, which punishes imbalance between them more than '
-              'an average would.',
+              'Classification metrics deserve a proper unpacking. Every metric '
+              'is built from four cells in a 2x2 table. True positives: you '
+              'flagged it, it was real. False positives: you flagged it, it '
+              'was innocent. True negatives: you ignored it, correctly. False '
+              'negatives: you ignored it, and should not have. Precision is TP '
+              'divided by everything you flagged. Recall is TP divided by '
+              'everything that was actually positive. F1 is their harmonic '
+              'mean — which punishes lopsidedness more than a regular average '
+              'would, so you cannot cheat by gaming one at the expense of the '
+              'other.',
           startMs: 214000,
           endMs: 292000,
         ),
@@ -862,12 +918,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd5',
           speaker: 'Host',
           text:
-              'Then the curves. ROC plots true positive rate against false '
-              'positive rate across all thresholds, and its area summarises '
-              'ranking quality. But on heavily imbalanced data ROC-AUC looks '
-              'flattering, because the false positive rate has an enormous '
-              'denominator. The precision-recall curve and average precision '
-              'are far more informative when positives are rare.',
+              'Then the curves. The ROC curve plots true positive rate against '
+              'false positive rate as you sweep the threshold, and its area '
+              'under the curve — ROC-AUC — summarises ranking quality. But '
+              'here is the catch: on heavily imbalanced data where positives '
+              'are rare, the false positive rate has an enormous denominator '
+              'of true negatives, so the curve looks flattering. The '
+              'precision-recall curve is far more honest when positives are '
+              'rare, because it ignores the overwhelming sea of true negatives '
+              'and focuses on what happens among the things you actually '
+              'flagged.',
           startMs: 292000,
           endMs: 372000,
         ),
@@ -875,12 +935,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd6',
           speaker: 'Guest',
           text:
-              'And calibration is the metric people forget. A model can rank '
-              'perfectly and still have meaningless probabilities — saying '
-              'zero point nine when it is right seventy percent of the time. '
-              'If a downstream system multiplies that probability by a cost, '
-              'you need calibration, which you check with a reliability '
-              'diagram and fix with Platt scaling or isotonic regression.',
+              'And calibration — the metric everyone forgets until production. '
+              'A model can rank perfectly and still have garbage probabilities. '
+              'Saying "90% confidence" when it is actually right 70% of the '
+              'time means downstream systems that multiply that number by a '
+              'dollar cost are making systematically wrong decisions. You '
+              'check calibration with a reliability diagram — a simple plot of '
+              'predicted probability versus actual frequency — and fix it with '
+              'Platt scaling or isotonic regression on a held-out calibration '
+              'set. It is the difference between a model that is directionally '
+              'correct and a model whose numbers you can actually trust.',
           startMs: 372000,
           endMs: 450000,
         ),
@@ -888,13 +952,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd7',
           speaker: 'Host',
           text:
-              'Over to unsupervised. K-means minimises within-cluster squared '
-              'distance, which implicitly assumes spherical, equally sized, '
-              'equally dense groups. Gaussian mixtures relax that with '
-              'per-cluster covariance and give soft assignments. DBSCAN drops '
-              'the parametric assumption entirely and defines clusters as '
-              'dense regions, which is why it handles crescents and rings that '
-              'defeat k-means.',
+              'Over to unsupervised. K-means minimizes total within-cluster '
+              'squared distance — every point wants to be near its cluster '
+              'centre. This implicitly assumes spherical, equally sized, '
+              'equally dense groups. Hand it two interlocking crescent shapes '
+              'and it draws a straight line right through the middle. Gaussian '
+              'mixture models relax this with per-cluster covariance — '
+              'elongated shapes are fine. DBSCAN drops parametric assumptions '
+              'entirely: it defines clusters as regions of high density '
+              'separated by regions of low density. That is why it handles '
+              'crescents and rings that destroy k-means.',
           startMs: 450000,
           endMs: 534000,
         ),
@@ -902,14 +969,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd8',
           speaker: 'Guest',
           text:
-              'Dimensionality reduction splits by purpose. PCA is linear, '
-              'orthogonal, fast and invertible — good as preprocessing, good '
-              'for denoising, and its explained-variance ratio tells you '
-              'exactly what you kept. t-SNE and UMAP are for looking at data, '
-              'not for feature engineering: they preserve local neighbourhoods '
-              'while distorting global distances, so cluster sizes and '
-              'inter-cluster gaps in those plots mean much less than they '
-              'appear to.',
+              'Dimensionality reduction splits cleanly by purpose. PCA is '
+              'linear, orthogonal, fast, and reversible — you can project down '
+              'to 20 dimensions and back up to 500, and the reconstruction '
+              'error tells you exactly what you lost. Use it as preprocessing '
+              'for models that struggle in high dimensions, or as a denoiser. '
+              't-SNE and UMAP are for visualization only. They preserve local '
+              'neighbourhoods beautifully while deliberately distorting global '
+              'distances, so cluster sizes and gaps between clusters in those '
+              'plots mean far less than they appear to. Do not use them as '
+              'features in a downstream model.',
           startMs: 534000,
           endMs: 618000,
         ),
@@ -917,13 +986,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd9',
           speaker: 'Host',
           text:
-              'The evaluation gap is structural. Internal indices — '
-              'silhouette, Davies-Bouldin — score geometric properties, which '
-              'is not the same as scoring correctness, and they favour '
-              'whatever shape the algorithm produces. External indices like '
-              'adjusted Rand need labels, which you do not have. So stability '
-              'analysis and downstream utility carry most of the weight in '
-              'practice.',
+              'The evaluation gap is structural and honest people acknowledge '
+              'it. Internal indices — silhouette, Davies-Bouldin, '
+              'Calinski-Harabasz — score geometric properties like compactness '
+              'and separation. But they reward whatever shape the algorithm '
+              'naturally produces. A k-means run scores well by its own '
+              'criterion because the criterion is what k-means was optimising. '
+              'External indices like adjusted Rand need ground truth labels, '
+              'which you do not have. So stability analysis — rerunning on '
+              'bootstrapped subsamples and measuring partition consistency — '
+              'and downstream utility carry most of the weight in practice.',
           startMs: 618000,
           endMs: 694000,
         ),
@@ -931,12 +1003,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd10',
           speaker: 'Guest',
           text:
-              'Now the paradigm that reshaped the field: self-supervised '
-              'learning. You manufacture supervision from unlabelled data — '
-              'mask a token and predict it, predict the next token, match two '
-              'augmented views of the same image. There is no annotation cost, '
-              'so you can train on enormous corpora, and the representations '
-              'transfer to tasks with only a few hundred labels.',
+              'Now the paradigm that reshaped the entire field. Self-supervised '
+              'learning manufactures supervision from unlabelled data. Mask a '
+              'word in a sentence and predict it. Predict the next token. Take '
+              'two differently cropped views of the same photo and train the '
+              'model to recognise they are the same object. There is zero '
+              'annotation cost, so you can train on the entire internet. The '
+              'representations that fall out transfer to downstream tasks with '
+              'remarkably few labelled examples — sometimes just a few hundred. '
+              'This is the engine behind BERT, GPT, CLIP, and essentially '
+              'every modern foundation model.',
           startMs: 694000,
           endMs: 774000,
         ),
@@ -944,12 +1020,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd11',
           speaker: 'Host',
           text:
-              'That inverts the practical advice. The default for text and '
-              'images is no longer "train supervised from scratch" but '
-              '"fine-tune a pre-trained model", which changes what a small '
-              'labelled dataset is worth by an order of magnitude. Structured '
-              'tabular data is the honourable exception, where gradient-boosted '
-              'trees remain extremely hard to beat.',
+              'Which completely inverts the practical advice from a decade ago. '
+              'The default for text and images today is not "train a supervised '
+              'model from scratch". It is "grab a pre-trained model from the '
+              'Hugging Face hub and fine-tune it". That changes what a small '
+              'labelled dataset is worth by an order of magnitude — a few '
+              'hundred examples can now do what used to require tens of '
+              'thousands. The honourable exception is structured tabular data '
+              'like spreadsheets, where gradient-boosted trees remain '
+              'stubbornly hard to beat, and self-supervised pre-training has '
+              'had far less impact.',
           startMs: 774000,
           endMs: 838000,
         ),
@@ -957,13 +1037,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd12',
           speaker: 'Guest',
           text:
-              'Closing thought: framing is where projects are won or lost. '
-              'Write down the decision the output will change, then the label '
-              'that decision implies, then what that label costs to obtain. If '
-              'the honest answer is that the label does not exist, you have an '
-              'unsupervised or self-supervised problem — and pretending '
-              'otherwise with a convenient proxy is how systems end up '
-              'optimising the wrong thing very efficiently.',
+              'Closing thought: framing is where ML projects are truly won or '
+              'lost, and it happens before any code is written. Write down the '
+              'decision the output will change. Then the label that decision '
+              'implies. Then what that label costs to obtain. If the honest '
+              'answer is that the label does not exist — you have an '
+              'unsupervised or self-supervised problem. Pretending otherwise '
+              'with a convenient proxy — clicks for usefulness, arrests for '
+              'crime — is how systems end up optimising the wrong thing with '
+              'devastating efficiency. The algorithm is not the dangerous part. '
+              'The proxy is.',
           startMs: 838000,
           endMs: 864000,
         ),

@@ -1,5 +1,6 @@
 import '../../models/content_block.dart';
 import '../../models/exercise.dart';
+import '../../models/game.dart';
 import '../../models/lesson.dart';
 import '../../models/podcast.dart';
 import '../../models/review.dart';
@@ -16,6 +17,7 @@ const Lesson controlFlowLesson = Lesson(
   read: _read,
   practice: _practice,
   podcast: _podcast,
+  play: _play,
   review: _review,
   sources: _sources,
 );
@@ -514,6 +516,117 @@ find_first_even([])              # no even numbers
   ],
 );
 
+const GameContent _play = GameContent(
+  games: [
+    SyntaxScrambleGame(
+      id: 'game-control-flow-scramble',
+      title: 'Rebuild the grade ladder',
+      instructions: 'Drag or use the arrows to put these lines back in order.',
+      lines: [
+        'def grade(score):',
+        '    if score >= 90:',
+        '        return "A"',
+        '    elif score >= 80:',
+        '        return "B"',
+        '    else:',
+        '        return "F"',
+      ],
+    ),
+    OutputPredictorGame(
+      id: 'game-control-flow-for-else',
+      title: 'What does this print?',
+      instructions: 'Pick what first_factor(9) prints.',
+      code: '''
+def first_factor(n):
+    for candidate in range(2, n):
+        if n % candidate == 0:
+            print(f"{n} is divisible by {candidate}")
+            break
+    else:
+        print(f"{n} is prime")
+
+
+first_factor(9)
+''',
+      options: [
+        '9 is prime',
+        '9 is divisible by 3',
+        'Nothing is printed',
+        '9 is divisible by 9',
+      ],
+      correctIndex: 1,
+      explanation:
+          'candidate=2 does not divide 9, but candidate=3 does — the if body '
+          'prints and breaks, which skips the loop\'s else clause entirely. '
+          'else only runs when the loop finishes without a break.',
+    ),
+    FillBlankGame(
+      id: 'game-control-flow-enumerate',
+      title: 'Pair items with their position',
+      instructions: 'Type the missing built-in function.',
+      code: '''
+names = ["ada", "grace", "alan"]
+for position, name in ______(names, start=1):
+    print(position, name)
+''',
+      blanks: [Blank(answer: 'enumerate', hint: 'built-in function')],
+    ),
+    BugHuntGame(
+      id: 'game-control-flow-range-bug',
+      title: 'Find the empty loop',
+      instructions: 'Tap the line that stops this loop from ever running.',
+      code: '''
+def countdown_from(n):
+    for i in range(n, 0):
+        print(i)
+
+
+countdown_from(3)
+''',
+      buggyLine: 2,
+      explanation:
+          'range(n, 0) counts upward by a default step of +1, but n is '
+          'already greater than 0 — so the range is empty and the loop body '
+          'never runs. Count down explicitly with range(n, 0, -1).',
+      fixedCode: '''
+def countdown_from(n):
+    for i in range(n, 0, -1):
+        print(i)
+
+
+countdown_from(3)   # 3 2 1
+''',
+    ),
+    TermMatchGame(
+      id: 'game-control-flow-terms',
+      title: 'Match the vocabulary',
+      instructions: 'Tap a term, then tap its definition.',
+      pairs: [
+        TermPair(
+          term: 'Truthiness',
+          definition: 'The truth value Python derives from any object in a condition.',
+        ),
+        TermPair(
+          term: 'Short-circuit evaluation',
+          definition: 'and/or stop at the first operand that decides the result.',
+        ),
+        TermPair(
+          term: 'Loop else clause',
+          definition: 'Runs only when the loop finished without hitting a break.',
+        ),
+        TermPair(
+          term: 'Structural pattern matching',
+          definition: 'match tests the shape of a value and binds the parts it matches.',
+        ),
+        TermPair(
+          term: 'Guard clause',
+          definition: 'An early return that handles an edge case before the main logic.',
+        ),
+      ],
+    ),
+  ],
+);
+
 const PodcastScript _podcast = PodcastScript(
   variants: {
     PodcastVariant.concise: ScriptVariant(
@@ -524,10 +637,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c1',
           speaker: 'Host',
           text:
-              'Control flow in about three minutes. Python gives you a very '
-              'small set of tools here — if, elif, else, for, while, break, '
-              'continue and match — and almost all the skill is in picking the '
-              'right one rather than in remembering syntax.',
+              'Control flow in about three minutes. Python gives you a tiny toolkit — '
+              'if, elif, else, for, while, break, continue, and match. '
+              'It\'s like having seven basic tools in your kitchen drawer. '
+              'You can cook almost anything with them, but the real skill '
+              'is knowing which one to grab, not memorizing what each looks like.',
           startMs: 0,
           endMs: 40000,
         ),
@@ -535,11 +649,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c2',
           speaker: 'Guest',
           text:
-              'Start with truthiness, because it shows up in every condition. '
-              'False, None, zero, and any empty container or string are falsy. '
-              'Everything else is truthy. So "if not items" is the idiomatic '
-              'way to ask whether a list is empty — but be careful, because it '
-              'also fires when items is None or zero.',
+              'First up: truthiness — it\'s the bouncer at the door of every if statement. '
+              'False, None, zero of any kind, empty strings, empty lists — all get turned away. '
+              'Everything else gets in. So "if not items" is the pythonic way to ask "is this list empty?" — '
+              'but careful, because it also says yes when items is None or zero, '
+              'and zero might be a perfectly valid value in your program.',
           startMs: 40000,
           endMs: 88000,
         ),
@@ -547,10 +661,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c3',
           speaker: 'Host',
           text:
-              'Then loops. Python\'s for loop is a foreach: it walks the '
-              'objects themselves, not indexes. If you find yourself writing '
-              'for i in range of len of something, you almost certainly want '
-              'enumerate for positions, or zip to walk two lists together.',
+              'On to loops. Python\'s for loop is more like a tour guide than a counter — '
+              'it walks through the items themselves, not index numbers. '
+              'If you catch yourself writing "for i in range of len of something," '
+              'stop right there. You probably want enumerate if you need positions, '
+              'or zip if you\'re walking two lists side by side. '
+              'It\'s the difference between counting seats and actually visiting each room.',
           startMs: 88000,
           endMs: 132000,
         ),
@@ -558,11 +674,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c4',
           speaker: 'Guest',
           text:
-              'And the one piece of syntax nobody guesses correctly: a loop '
-              'can have an else clause, and it runs when the loop finished '
-              'without hitting a break. Read it as "no break". It is the '
-              'search idiom — did I get all the way through without finding '
-              'what I was looking for.',
+              'And here\'s the one nobody sees coming: loops in Python can have an else clause. '
+              'It doesn\'t mean "if the loop was empty" — it means "if the loop finished without hitting break." '
+              'Mentally read it as "nobreak." It\'s perfect for search patterns: '
+              'you loop through looking for something, break when you find it, '
+              'and the else block handles the "not found" case without any extra flags.',
           startMs: 132000,
           endMs: 176000,
         ),
@@ -570,10 +686,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c5',
           speaker: 'Host',
           text:
-              'Finally, match, from Python 3.10. It matches the shape of data '
-              'and binds the pieces, so it shines on parsed JSON and message '
-              'dispatch. For plain equality, a dict of handlers is still '
-              'shorter. That is the whole toolkit.',
+              'And finally, match — the new kid from Python 3.10. '
+              'Think of it as a Swiss Army knife for data shapes. '
+              'It\'s brilliant when you\'re dealing with parsed JSON or message patterns '
+              'where you want to pull apart the structure and react differently. '
+              'But for simple equality checks? A dictionary of handlers is still shorter. '
+              'That\'s your whole control flow toolkit, right there.',
           startMs: 176000,
           endMs: 210000,
         ),
@@ -587,11 +705,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 's1',
           speaker: 'Host',
           text:
-              'Today we are on control flow: the statements that decide what '
-              'runs next. The syntax fits on a postcard, so we are going to '
-              'spend the time on judgement instead — which construct says what '
-              'you actually mean, and where Python quietly differs from the '
-              'languages people arrive from.',
+              'Today we are talking about control flow — the statements that decide what runs next. '
+              'The actual syntax fits on a postcard, honestly. So instead of memorizing, '
+              'let\'s spend our time on judgment: which tool says what you really mean, '
+              'and where Python quietly behaves differently from the languages '
+              'most of us grew up with.',
           startMs: 0,
           endMs: 52000,
         ),
@@ -599,12 +717,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 's2',
           speaker: 'Guest',
           text:
-              'The first difference is that blocks are defined by indentation. '
-              'There are no braces, so what you see on screen is exactly what '
-              'the interpreter sees. A line indented one level too far is a '
-              'different program, not a formatting quibble — and that is the '
-              'single most common source of confusion in someone\'s first '
-              'week.',
+              'The first thing that throws people: blocks are defined by indentation, not braces. '
+              'What you see on screen is exactly what Python sees — there\'s no hidden punctuation. '
+              'It\'s like writing an outline for a paper: the indentation IS the structure. '
+              'One space too many and you\'ve written a different program. '
+              'This trips up almost everyone in their first week, so you\'re in good company.',
           startMs: 52000,
           endMs: 116000,
         ),
@@ -612,11 +729,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 's3',
           speaker: 'Host',
           text:
-              'With if and elif, the important property is that the chain '
-              'stops at the first true condition. Later branches are never '
-              'evaluated. That means order matters: put the specific cases '
-              'first, because a broad condition placed early swallows every '
-              'narrower one underneath it.',
+              'With if and elif, here\'s the key insight: the chain stops at the first match. '
+              'It\'s like a series of bouncers at a club — the first one who lets you in wins, '
+              'and nobody else even looks at you. So order matters tremendously. '
+              'Put your narrow, specific conditions first. A broad condition early on '
+              'will swallow every narrower case below it — like putting "age > 0" '
+              'before "age > 65" and wondering why the senior discount never fires.',
           startMs: 116000,
           endMs: 172000,
         ),
@@ -624,13 +742,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 's4',
           speaker: 'Guest',
           text:
-              'Conditions do not have to be booleans, either. Python asks any '
-              'object whether it is truthy. Empty containers, empty strings, '
-              'zero of any numeric type, None and False are falsy; everything '
-              'else is truthy — including the string "False" and the list '
-              'containing a single zero. And the and/or operators return one '
-              'of their operands rather than a bool, which is why "name or '
-              'anonymous" works as a default value.',
+              'Here\'s something surprising: conditions don\'t need to be booleans. '
+              'Python asks every object "are you truthy?" — like a bouncer checking IDs. '
+              'Empty things, zero, None, and False get turned away. Everything else gets in — '
+              'even the string "False" (it\'s not empty!) or a list containing [0] (it\'s not empty either!). '
+              'And the and/or operators are shortcut operators — they return one of their operands, not True/False, '
+              'which is exactly why "name or anonymous" works as a default value.',
           startMs: 172000,
           endMs: 248000,
         ),
@@ -638,11 +755,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 's5',
           speaker: 'Host',
           text:
-              'The trap there is treating falsy as a synonym for missing. If '
-              'you write "if not count", you catch None and you also catch a '
-              'perfectly legitimate zero. When zero is real data, compare '
-              'against None explicitly. This bug is very quiet and very common '
-              'in configuration handling.',
+              'Now the trap: treating falsy as "missing." If you write "if not count" you\'ll catch None — '
+              'great! — but you\'ll also catch zero, which might be a perfectly legitimate value. '
+              'Imagine you\'re checking a bank balance: zero dollars is very different from "no data available." '
+              'When zero is real data in your domain, compare against None explicitly. '
+              'This bug is silent, deadly, and everywhere in configuration code.',
           startMs: 248000,
           endMs: 304000,
         ),
@@ -650,12 +767,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 's6',
           speaker: 'Guest',
           text:
-              'Loops next. Python\'s for asks an object for an iterator and '
-              'pulls values from it, so it iterates over items rather than '
-              'positions. enumerate gives you positions when you need them, '
-              'and takes a start argument so you can number from one. zip '
-              'walks several sequences in lockstep and stops at the shortest — '
-              'or raises, if you pass strict equals True on 3.10 and later.',
+              'On to loops. Python\'s for loop is like a waiter delivering dishes from the kitchen — '
+              'it brings you the items themselves, not table numbers. '
+              'enumerate gives you table numbers when you need them, and it accepts a start argument '
+              'so you can number from 1 like normal humans do. '
+              'zip walks several sequences in lockstep like two people walking side by side, '
+              'stopping when the shorter one runs out — or it can raise an error on 3.10+ '
+              'if you pass strict=True and they\'re different lengths.',
           startMs: 304000,
           endMs: 372000,
         ),
@@ -663,12 +781,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 's7',
           speaker: 'Host',
           text:
-              'while is for looping until a condition changes rather than over '
-              'a known collection. break leaves the innermost loop, continue '
-              'skips to the next iteration, and both loop types can carry an '
-              'else clause that runs only when no break happened. Say "no '
-              'break" out loud each time you read it and it stops being '
-              'confusing.',
+              'while is for looping until something changes — like stirring a pot until it boils, '
+              'rather than counting how many stirs you\'ve done. '
+              'break bails out of the innermost loop entirely. continue skips to the next lap. '
+              'And both loop types can carry an else clause — which fires only when no break happened, '
+              'like a "plan B" for when you searched everything and found nothing. '
+              'Just say "nobreak" out loud whenever you see it and it stops being weird.',
           startMs: 372000,
           endMs: 434000,
         ),
@@ -676,11 +794,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 's8',
           speaker: 'Guest',
           text:
-              'And keep one rule in your head: do not add or remove items from '
-              'the thing you are iterating over. Removing from a list while '
-              'looping makes the loop skip elements, and changing a dict\'s '
-              'keys raises RuntimeError. Build a new collection, or iterate '
-              'over a snapshot such as list of the dict.',
+              'One golden rule: never add or remove items from the thing you\'re currently looping over. '
+              'It\'s like trying to repaint a road while you\'re driving on it — things shift under you. '
+              'Removing from a list mid-loop makes it skip elements (everyone shifts down but your index still advances). '
+              'Changing a dict\'s keys mid-iteration raises a RuntimeError — Python catches you red-handed. '
+              'The fix: build a new collection, or loop over a snapshot like list(my_dict).',
           startMs: 434000,
           endMs: 486000,
         ),
@@ -694,12 +812,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd1',
           speaker: 'Host',
           text:
-              'The long version of control flow. We will go through branching, '
-              'truthiness, the iterator protocol behind the for loop, the else '
-              'clause, structural pattern matching, and finish on how to keep '
-              'deeply branched code readable. Some of this is mechanism you '
-              'will only need once, but it is exactly the mechanism that '
-              'explains the surprises.',
+              'Welcome to the deep dive on control flow. We\'re going to peel back every layer: '
+              'branching, the truthiness machinery, the iterator protocol that powers for loops, '
+              'the mysterious else clause, structural pattern matching, and how to keep deeply nested code sane. '
+              'Some of this you might only need once — but it\'s exactly the stuff that explains '
+              'those "why did my code do THAT?" moments we\'ve all had.',
           startMs: 0,
           endMs: 66000,
         ),
@@ -707,13 +824,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd2',
           speaker: 'Guest',
           text:
-              'Start underneath the if statement. The interpreter does not '
-              'require a bool; it calls the object\'s dunder bool method to ask '
-              'for a truth value. If the type does not define one, Python falls '
-              'back to dunder len and treats length zero as false. If neither '
-              'exists, the object is unconditionally true. That is the entire '
-              'rule, and it explains why empty containers are falsy without '
-              'anyone special-casing them.',
+              'Let\'s go under the if statement. Python doesn\'t actually require a bool — it asks the object politely. '
+              'First it calls __bool__. If that doesn\'t exist, it tries __len__ — zero means false. '
+              'If neither exists, the object is unconditionally true. That\'s the whole rule! '
+              'It\'s like asking a restaurant "are you open?" — first check the sign, '
+              'if there\'s no sign, count the customers. No customers and no sign? Assume open. '
+              'This elegant fallback chain is why empty containers are falsy without anyone special-casing them.',
           startMs: 66000,
           endMs: 148000,
         ),
@@ -721,11 +837,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd3',
           speaker: 'Host',
           text:
-              'It also explains a class of bug in numeric libraries. A NumPy '
-              'array with more than one element raises when you ask it for a '
-              'truth value, because element-wise comparison makes "is this '
-              'array true" genuinely ambiguous. The interpreter is not being '
-              'awkward; the type is declining to guess.',
+              'This also explains a bug that bites data scientists. A NumPy array with multiple elements '
+              'refuses to give a truth value — it raises an error instead. Why? '
+              'Because "is this array true?" is genuinely ambiguous — does it mean "are ALL elements true" '
+              'or "is ANY element true"? NumPy says "I\'m not guessing — you tell me with .any() or .all()." '
+              'The interpreter isn\'t being difficult; the type is wisely refusing to pick for you.',
           startMs: 148000,
           endMs: 214000,
         ),
@@ -733,12 +849,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd4',
           speaker: 'Guest',
           text:
-              'Short-circuiting is worth being precise about too. "a and b" '
-              'evaluates a, and if a is falsy it returns a itself without '
-              'touching b. "a or b" returns a if a is truthy. So these '
-              'operators return operands, not booleans — which is both the '
-              'trick behind default values and the reason "x or 0" quietly '
-              'replaces a legitimate empty string.',
+              'Short-circuiting deserves precision because it\'s both brilliant and treacherous. '
+              '"a and b" checks a first — if a is falsy, it returns a immediately without even glancing at b. '
+              'It\'s like checking if you have your keys before checking if the car has gas — no point looking further. '
+              '"a or b" returns a if truthy, b otherwise. These return the actual operand, not True/False. '
+              'That\'s the magic behind "name or \'anonymous\'" — and the curse behind "x or 0" silently replacing '
+              'a legitimate empty string or zero with a default you didn\'t mean.',
           startMs: 214000,
           endMs: 288000,
         ),
@@ -746,13 +862,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd5',
           speaker: 'Host',
           text:
-              'Now the for loop. It is pure syntax over the iterator protocol: '
-              'Python calls iter on the object to get an iterator, then calls '
-              'next repeatedly until StopIteration is raised, and that '
-              'exception is what ends the loop. Nothing about the loop knows '
-              'about lists or indexes, which is why the same statement works '
-              'over files, dicts, generators and anything else you make '
-              'iterable.',
+              'Now the for loop — and this is beautiful once you see it. It\'s just syntax sugar over three steps: '
+              'call iter() on the object, call next() repeatedly, and stop when StopIteration is raised. '
+              'That\'s it. The loop itself knows nothing about lists or indexes — it\'s like a universal remote '
+              'that works with any device that speaks the same protocol. '
+              'That\'s why the same for statement works on lists, files, dicts, generators, '
+              'and anything you make iterable. No special cases, just a clean contract.',
           startMs: 288000,
           endMs: 368000,
         ),
@@ -760,13 +875,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd6',
           speaker: 'Guest',
           text:
-              'That protocol also explains the mutation bug. A list iterator '
-              'keeps an integer index. Remove an item and everything after it '
-              'shifts down, but the index still advances, so exactly one '
-              'element gets skipped for each removal. Dicts take a different '
-              'approach: they track a version counter and raise RuntimeError '
-              'if the size changes mid-iteration, which is a much kinder '
-              'failure.',
+              'This protocol also explains why mutating while iterating goes wrong — but differently for different types. '
+              'A list iterator keeps an integer index. Remove item 3, everything after shifts down, '
+              'but the index still ticks to 4 — skipping exactly one element. It\'s like removing a rung '
+              'from a ladder while climbing: you miss the next step entirely. '
+              'Dicts are smarter: they track a version counter and raise RuntimeError the moment the size changes. '
+              'Much kinder — at least it screams instead of silently skipping your data.',
           startMs: 368000,
           endMs: 448000,
         ),
@@ -774,12 +888,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd7',
           speaker: 'Host',
           text:
-              'The loop else clause makes most sense once you know it exists '
-              'for search. You loop looking for something; you break when you '
-              'find it; the else runs when you did not. The alternative is a '
-              'found flag you set in two places and test in a third. The '
-              'clause is genuinely poorly named — Donald Knuth would have '
-              'called it "nobreak" — but it removes real bookkeeping.',
+              'The else clause on loops finally makes sense when you see it as a search pattern. '
+              'You\'re looking through items. You break when you find what you want. '
+              'The else runs when you searched everything and came up empty. '
+              'Without it, you\'d need a "found" flag — set in one place when you find it, '
+              'test in another place after the loop. It\'s poorly named, I\'ll grant you — '
+              'Knuth would have called it "nobreak" — but it eliminates real bookkeeping.',
           startMs: 448000,
           endMs: 524000,
         ),
@@ -787,12 +901,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd8',
           speaker: 'Guest',
           text:
-              'On to match, added in 3.10. The critical thing to internalise '
-              'is that a bare name inside a pattern is a binding, not a '
-              'comparison. "case x" matches anything and names it x. If you '
-              'want to compare against a constant you need a dotted name, like '
-              'Colour.RED, or a literal. People write "case CONSTANT" expecting '
-              'equality and get a catch-all that shadows every case below it.',
+              'Now match, the feature that arrived in Python 3.10. Here\'s the thing everyone gets wrong: '
+              'a bare name in a case pattern is a BINDING, not a comparison. "case x" matches literally anything '
+              'and names it x — it\'s like saying "I\'ll take whatever you give me and call it Bob." '
+              'If you want to compare against a constant, you need a dotted name like Colour.RED, or a literal value. '
+              'I\'ve seen people write "case MY_CONSTANT" expecting a comparison and instead creating '
+              'a catch-all that silently shadows every case below it. Painful.',
           startMs: 524000,
           endMs: 606000,
         ),
@@ -800,12 +914,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd9',
           speaker: 'Host',
           text:
-              'Beyond that, patterns compose. You can match a mapping with '
-              'particular keys, a sequence of a given length, a class with '
-              'specific attributes, or alternatives separated by a vertical '
-              'bar. You can add a guard — an if after the pattern — for '
-              'conditions that are about values rather than shape. And '
-              'underscore is the wildcard that matches without binding.',
+              'Beyond the basics, patterns compose beautifully. You can match a dict with specific keys, '
+              'a sequence of a certain length, a class with particular attribute values, '
+              'or alternatives separated by a vertical bar — like saying "match this OR that." '
+              'You can add a guard — an if after the pattern — for conditions about values, not shapes. '
+              'And underscore is your wildcard: it matches anything without capturing it, '
+              'like a trash can that says "I don\'t care what this is, just move on."',
           startMs: 606000,
           endMs: 682000,
         ),
@@ -813,12 +927,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd10',
           speaker: 'Guest',
           text:
-              'When should you use it? When you are dispatching on the shape '
-              'of data — parsed JSON, an abstract syntax tree, a protocol '
-              'message. When you are dispatching on a single value, a '
-              'dictionary mapping values to functions is usually shorter and '
-              'faster to read. And when the decision is not about structure at '
-              'all, if/elif is still the honest answer.',
+              'So when should you actually reach for match? When your decision depends on the SHAPE of data — '
+              'parsed JSON from an API, an abstract syntax tree, a protocol message with different variants. '
+              'For dispatching on a single value? A dictionary mapping values to functions is usually shorter and clearer. '
+              'And when the decision isn\'t about structure at all — just a chain of conditions? '
+              'Good old if/elif is still the honest, readable answer. Match is a precision tool, not a hammer.',
           startMs: 682000,
           endMs: 754000,
         ),
@@ -826,12 +939,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd11',
           speaker: 'Host',
           text:
-              'Close on readability. Deep nesting is the real enemy: prefer '
-              'guard clauses that return early on the invalid cases so the '
-              'happy path stays at one indentation level. Keep conditions '
-              'short enough to name. And remember the summary: conditions ask '
-              'objects for truthiness, for loops consume iterators, else means '
-              'no break, and match matches structure.',
+              'Let\'s close on readability, because ultimately that\'s what control flow is about. '
+              'Deep nesting is the real enemy — it\'s like a Russian doll where you need to open seven layers '
+              'to find the actual logic. Prefer guard clauses: check the invalid cases first and return early, '
+              'so the happy path stays at one indentation level. Keep conditions short enough to name. '
+              'And here\'s your mental cheat sheet: conditions ask objects for truthiness, '
+              'for loops consume iterators, else means "no break happened," and match matches structure. '
+              'That\'s the whole game.',
           startMs: 754000,
           endMs: 822000,
         ),

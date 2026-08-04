@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:learnflow/models/content_block.dart';
 import 'package:learnflow/models/exercise.dart';
+import 'package:learnflow/models/game.dart';
 import 'package:learnflow/models/lesson.dart';
 import 'package:learnflow/models/podcast.dart';
 import 'package:learnflow/models/review.dart';
@@ -26,6 +27,7 @@ Lesson _lesson({
   bool practice = true,
   bool listen = true,
   bool review = true,
+  bool play = true,
 }) {
   return Lesson(
     id: id,
@@ -74,6 +76,18 @@ Lesson _lesson({
       keyConcepts: const <KeyConcept>[],
       mistakes: const <Mistake>[],
       interviewQuestions: const <InterviewQuestion>[],
+    ),
+    play: GameContent(
+      games: play
+          ? const <Game>[
+              TermMatchGame(
+                id: 'g1',
+                title: 'Match',
+                instructions: 'Match them.',
+                pairs: <TermPair>[TermPair(term: 'a', definition: 'b')],
+              ),
+            ]
+          : const <Game>[],
     ),
     sources: const <Source>[],
   );

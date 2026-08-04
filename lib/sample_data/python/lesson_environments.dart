@@ -1,5 +1,6 @@
 import '../../models/content_block.dart';
 import '../../models/exercise.dart';
+import '../../models/game.dart';
 import '../../models/lesson.dart';
 import '../../models/podcast.dart';
 import '../../models/review.dart';
@@ -16,6 +17,7 @@ const Lesson environmentsLesson = Lesson(
   read: _read,
   practice: _practice,
   podcast: _podcast,
+  play: _play,
   review: _review,
   sources: _sources,
 );
@@ -516,6 +518,87 @@ python -m pip list
   ],
 );
 
+const GameContent _play = GameContent(
+  games: [
+    FillBlankGame(
+      id: 'game-environments-venv-command',
+      title: 'Create the environment',
+      instructions: 'Type the missing module name.',
+      code: '''
+python3 -m ______ .venv
+source .venv/bin/activate
+''',
+      blanks: [Blank(answer: 'venv', hint: 'standard library module')],
+    ),
+    BugHuntGame(
+      id: 'game-environments-sudo-pip',
+      title: 'Find the risky install',
+      instructions: 'Tap the line that can break the system Python.',
+      code: '''
+python3 -m venv .venv
+source .venv/bin/activate
+sudo pip install requests
+python -m pip list
+''',
+      buggyLine: 3,
+      explanation:
+          'sudo pip install writes into the interpreter the operating '
+          'system depends on, and can break system tooling. Install into '
+          'the already-activated project environment, without sudo.',
+      fixedCode: '''
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install requests
+python -m pip list
+''',
+    ),
+    OutputPredictorGame(
+      id: 'game-environments-prefix-check',
+      title: 'What does this print?',
+      instructions: 'Assume the interpreter is NOT inside a virtual environment.',
+      code: '''
+import sys
+
+in_venv = sys.prefix != sys.base_prefix
+print(in_venv)
+''',
+      options: ['True', 'False', 'AttributeError', 'None'],
+      correctIndex: 1,
+      explanation:
+          'Outside an active virtual environment, sys.prefix and '
+          'sys.base_prefix point at the same installation, so the '
+          'comparison is False. They differ only while a venv is active.',
+    ),
+    TermMatchGame(
+      id: 'game-environments-terms',
+      title: 'Match the vocabulary',
+      instructions: 'Tap a term, then tap its definition.',
+      pairs: [
+        TermPair(
+          term: 'site-packages',
+          definition: 'Where an interpreter installs and searches for packages.',
+        ),
+        TermPair(
+          term: 'sys.prefix vs sys.base_prefix',
+          definition: 'The active environment\'s root versus the base interpreter.',
+        ),
+        TermPair(
+          term: 'Editable install',
+          definition: 'Links your source tree onto the import path instead of copying it.',
+        ),
+        TermPair(
+          term: 'Wheel',
+          definition: 'A built distribution, installed by unpacking rather than compiling.',
+        ),
+        TermPair(
+          term: 'Pinning',
+          definition: 'Recording exact versions so an install is reproducible.',
+        ),
+      ],
+    ),
+  ],
+);
+
 const PodcastScript _podcast = PodcastScript(
   variants: {
     PodcastVariant.concise: ScriptVariant(
@@ -526,10 +609,10 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c1',
           speaker: 'Host',
           text:
-              'Environments and packaging, the short version. Every Python '
-              'interpreter has one directory where installed packages live. '
-              'Share that between projects and the first time two of them want '
-              'different versions of the same library, you are stuck.',
+              'Environments and packaging, the short version. Your Python installation has one global spot '
+              'where all installed packages live — like one shared pantry for every recipe you ever cook. '
+              'Share that pantry between projects and the moment one recipe needs salt v2 and another needs salt v1, '
+              'dinner is ruined. This is the problem virtual environments solve.',
           startMs: 0,
           endMs: 42000,
         ),
@@ -537,11 +620,10 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c2',
           speaker: 'Guest',
           text:
-              'So: one virtual environment per project. python dash m venv dot '
-              'venv creates it, source dot venv slash bin slash activate turns '
-              'it on, and from then on pip installs into the project instead of '
-              'into your operating system. Add dot venv to gitignore — it is '
-              'build output, not source.',
+              'The fix: one virtual environment per project, every time. python -m venv .venv creates it — '
+              'it\'s just a directory. source .venv/bin/activate turns it on — now pip installs go to your project, '
+              'not your operating system. Add .venv to .gitignore — it\'s build output, like compiled binaries, not source code. '
+              'Anyone can recreate it from your dependency list.',
           startMs: 42000,
           endMs: 92000,
         ),
@@ -549,10 +631,10 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c3',
           speaker: 'Host',
           text:
-              'Always write python dash m pip rather than a bare pip. A bare '
-              'pip is whichever one is first on your PATH, which may belong to '
-              'a completely different interpreter. Invoking it as a module '
-              'means the pip and the python can never disagree.',
+              'Always write python -m pip, never bare pip. A bare pip could be any pip on your system — '
+              'maybe from Python 3.9 when you\'re running 3.12. Using python -m pip guarantees '
+              'the pip you call matches the python you\'re running. They can never disagree about where packages go, '
+              'which prevents the maddening "I installed it but Python can\'t find it" bug.',
           startMs: 92000,
           endMs: 134000,
         ),
@@ -560,10 +642,10 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c4',
           speaker: 'Guest',
           text:
-              'What you commit is the dependency list. Applications pin exact '
-              'versions so the thing you tested is the thing that runs. '
-              'Libraries declare ranges instead, because a library that pins '
-              'makes everyone downstream unable to resolve.',
+              'What you actually commit to version control is the dependency list, not the packages themselves. '
+              'Applications should pin exact versions in a lock file — the thing you tested is the thing that runs in production. '
+              'Libraries should declare ranges instead (like "requests >= 2.28, < 3") because if a library pins exact versions, '
+              'everyone downstream gets version conflicts they can\'t resolve. Be a good citizen: apps pin, libraries don\'t.',
           startMs: 134000,
           endMs: 174000,
         ),
@@ -571,10 +653,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c5',
           speaker: 'Host',
           text:
-              'And packaging is now one file. pyproject dot toml names the '
-              'project, lists dependencies, picks a build backend and can '
-              'declare console commands. Install your own project with pip '
-              'install dash e dot while you work on it.',
+              'And packaging your own project? It\'s now one file: pyproject.toml. '
+              'It names your project, lists dependencies, picks a build backend, and can even declare console commands — '
+              'so typing "my-tool" in the terminal runs your Python function. '
+              'Install your own project with pip install -e . in editable mode while you develop — '
+              'changes to your source code show up immediately, no reinstall needed.',
           startMs: 174000,
           endMs: 204000,
         ),
@@ -588,11 +671,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 's1',
           speaker: 'Host',
           text:
-              'Today: virtual environments and packaging. This is the part of '
-              'Python that people find most confusing, and I think it is '
-              'because it is usually taught as a list of commands to memorise '
-              'rather than as one idea — which is that an environment is just a '
-              'directory, and everything else follows from that.',
+              'Today: virtual environments and packaging. This is the part of Python that confuses people the most, '
+              'and I think it\'s because it\'s usually taught as a list of commands to memorize. '
+              'But it all clicks when you realize one thing: an environment is just a directory. '
+              'That\'s it. A folder with a Python link, an empty packages folder, and a config file. '
+              'Once you see that, everything else — activation, pip, requirements — makes sense.',
           startMs: 0,
           endMs: 52000,
         ),
@@ -600,12 +683,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 's2',
           speaker: 'Guest',
           text:
-              'The starting problem is that installation is global per '
-              'interpreter. There is one site-packages directory, and pip '
-              'writes into it. So project A and project B share every library '
-              'and every version. Upgrade a dependency for A and B changes '
-              'underneath you, with no warning, because nothing recorded that B '
-              'needed the old one.',
+              'The core problem: Python installs packages globally per interpreter. One site-packages folder, '
+              'and pip just dumps everything in there. So your two projects share every library and every version. '
+              'Upgrade a library for project A, and project B silently breaks — maybe next week, maybe next deploy — '
+              'because nothing recorded that B needed the old version. It\'s like having one toolbox for every project '
+              'in your life: update the hammer for your woodworking hobby and your picture-hanging project now has a different hammer.',
           startMs: 52000,
           endMs: 122000,
         ),
@@ -613,11 +695,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 's3',
           speaker: 'Host',
           text:
-              'A virtual environment solves it by making a second, private '
-              'site-packages. It is genuinely just a directory: a link to a '
-              'Python interpreter, an empty site-packages, and a small config '
-              'file. Create it with python dash m venv, and keep it inside the '
-              'project so it is obvious which one it belongs to.',
+              'A virtual environment solves this by creating a second, private site-packages for each project. '
+              'It\'s literally just a folder: a symlink to your Python interpreter, an empty site-packages directory, '
+              'and a tiny pyvenv.cfg file. That\'s the whole thing. python -m venv .venv creates it. '
+              'Keep it inside your project folder — right next to your source code — '
+              'so it\'s obvious which environment belongs to which project. And don\'t commit it!',
           startMs: 122000,
           endMs: 186000,
         ),
@@ -625,11 +707,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 's4',
           speaker: 'Guest',
           text:
-              'Activation is worth demystifying too. The activate script '
-              'prepends the environment\'s bin directory to PATH and sets a '
-              'variable so your prompt can show it. That is all. You can skip '
-              'it entirely by running dot venv slash bin slash python directly, '
-              'which is exactly what editors and CI systems do.',
+              'Activation deserves demystifying because it feels like magic but isn\'t. '
+              'The activate script does exactly two things: prepends .venv/bin to your PATH so commands use the venv\'s Python, '
+              'and sets an environment variable so your prompt can show "(venv)". That\'s all. '
+              'You can skip activation entirely by running .venv/bin/python directly — '
+              'which is exactly what VS Code and CI systems do. Activate is convenience, not requirement.',
           startMs: 186000,
           endMs: 248000,
         ),
@@ -637,12 +719,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 's5',
           speaker: 'Host',
           text:
-              'The real isolation lives in the interpreter. On startup Python '
-              'looks for a pyvenv dot cfg file beside its executable, and if it '
-              'finds one it sets sys dot prefix to that directory while keeping '
-              'sys dot base underscore prefix pointing at the original install. '
-              'Comparing those two is the reliable way to check, from code, '
-              'whether you are in an environment.',
+              'The real isolation happens inside the Python interpreter itself. At startup, Python checks: '
+              '"Is there a pyvenv.cfg file next to me?" If yes, it sets sys.prefix to the venv directory '
+              'while keeping sys.base_prefix pointing at the original Python installation. '
+              'So all package resolution routes through the venv, but the standard library still comes from the base install. '
+              'Comparing sys.prefix and sys.base_prefix is the reliable way to detect from code whether you\'re in a venv.',
           startMs: 248000,
           endMs: 316000,
         ),
@@ -650,12 +731,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 's6',
           speaker: 'Guest',
           text:
-              'On dependencies, keep two ideas separate. Abstract dependencies '
-              '— what your code needs, expressed as ranges — go in pyproject '
-              'dot toml. Concrete dependencies — the exact versions of '
-              'everything including transitive packages — go in a lock file or '
-              'a pinned requirements file. Applications pin. Libraries do not, '
-              'because their pins become everyone else\'s conflicts.',
+              'Keep two kinds of dependencies straight in your head. Abstract dependencies — '
+              'what your code actually needs, expressed as version ranges — go in pyproject.toml. '
+              'Concrete dependencies — the exact versions of everything, including transitive packages, '
+              'locked down so your build is reproducible — go in a lock file or requirements.txt. '
+              'Applications pin: "I need exactly these versions to work." Libraries don\'t: '
+              '"I need anything compatible in this range." A library that pins makes everyone downstream fight version conflicts.',
           startMs: 316000,
           endMs: 392000,
         ),
@@ -663,13 +744,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 's7',
           speaker: 'Host',
           text:
-              'Packaging has become genuinely pleasant. One pyproject dot toml '
-              'declares the build backend, the project metadata, the '
-              'dependencies, optional extras like a dev group, and console '
-              'scripts that map a command name to a function. Install your own '
-              'project with dash e for editable mode while you develop, and '
-              'python dash m build produces a wheel when you are ready to '
-              'ship.',
+              'Packaging your own Python project is now genuinely pleasant. One pyproject.toml file declares '
+              'the build backend, project name and version, dependencies, optional extras (like a [dev] group for testing tools), '
+              'and console scripts — mapping a terminal command like "deploy" to a Python function. '
+              'pip install -e . gives you editable mode during development — edit source, changes appear immediately. '
+              'python -m build produces distributable wheels when you\'re ready to share. '
+              'It went from "Python packaging is terrible" to "one file and done."',
           startMs: 392000,
           endMs: 452000,
         ),
@@ -677,10 +757,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 's8',
           speaker: 'Guest',
           text:
-              'And when something is broken, delete the environment and rebuild '
-              'it. It holds nothing that is not already recorded. If the '
-              'problem survives a rebuild, your dependency list is wrong — '
-              'which is useful information.',
+              'And here\'s your nuclear option when things break: delete the environment and rebuild it. '
+              'A venv holds nothing that isn\'t already recorded in your dependency files. '
+              'rm -rf .venv, python -m venv .venv, pip install -e . — takes 30 seconds. '
+              'If the problem survives a clean rebuild, you know it\'s your dependency declarations, not environmental cruft. '
+              'That alone is worth the price of admission: it turns mysterious problems into actionable information.',
           startMs: 452000,
           endMs: 474000,
         ),
@@ -694,11 +775,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd1',
           speaker: 'Host',
           text:
-              'The long version on environments and distribution. We will trace '
-              'how an import actually finds a module, what a virtual '
-              'environment changes about that, how wheels differ from source '
-              'distributions, what the build backend interface is, and how the '
-              'modern tools fit on top of the same standards.',
+              'Alright, let\'s go deep on environments and packaging. Here\'s the analogy I want you to '
+              'hold onto: imagine you\'re a carpenter who builds furniture, fixes plumbing, and does '
+              'electronics. Would you throw every tool you own into one giant toolbox and hope for the '
+              'best? Of course not — your plumbing wrench doesn\'t belong next to your soldering iron, '
+              'and upgrading your hammer for furniture shouldn\'t break your pipe-fitting. That\'s '
+              'exactly what virtual environments are: separate toolboxes per project. Today we\'re '
+              'going to trace how an import actually finds a module on your disk, what a virtual '
+              'environment changes about that search, how wheels differ from source distributions, '
+              'what the build backend interface looks like under the hood, and how modern tools '
+              'like uv and Poetry sit on top of the same standards without reinventing them.',
           startMs: 0,
           endMs: 64000,
         ),
@@ -706,13 +792,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd2',
           speaker: 'Guest',
           text:
-              'Start with import. When you import a name, Python walks sys dot '
-              'path in order — the script\'s directory, then anything in '
-              'PYTHONPATH, then the standard library, then site-packages. The '
-              'first match wins. That single ordering explains an enormous '
-              'number of mysteries, including the classic one where a file '
-              'called random dot py in your project shadows the standard '
-              'library module of the same name.',
+              'Let\'s start with import, because that\'s where every mystery begins. When you type '
+              '"import requests", Python goes on a treasure hunt. It checks the script\'s directory first, '
+              'then anything in PYTHONPATH, then the standard library, and finally site-packages. '
+              'First match wins — like reaching into your toolbox and grabbing the first hammer you '
+              'find. This ordering explains so many "why is my import broken?" moments. The classic '
+              'one: you name a file random.py in your project, and suddenly the entire standard '
+              'library random module disappears — your file is casting a shadow over it. '
+              'Same goes for any name that collides with an installed package.',
           startMs: 64000,
           endMs: 152000,
         ),
@@ -720,12 +807,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd3',
           speaker: 'Host',
           text:
-              'A virtual environment changes exactly one thing about that: '
-              'which site-packages ends up on the path. The pyvenv dot cfg file '
-              'sets sys dot prefix, the site module computes site-packages from '
-              'the prefix, and the standard library still comes from the base '
-              'installation. So an environment is not a copy of Python — it is '
-              'a redirect, which is why creating one is instantaneous.',
+              'So what does a virtual environment change? Exactly one thing: which site-packages '
+              'folder appears on that search path. Think of it like a signpost, not a duplicate house. '
+              'The pyvenv.cfg file inside .venv tells Python "hey, set sys.prefix to this directory," '
+              'the site module then computes the site-packages path from that prefix, and the standard '
+              'library still comes from the original base installation. This is why creating a venv takes '
+              'a fraction of a second — it\'s not copying Python, it\'s just setting up a redirect. '
+              'Like putting a sticky note on your toolbox saying "use this one instead."',
           startMs: 152000,
           endMs: 236000,
         ),
@@ -733,12 +821,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd4',
           speaker: 'Guest',
           text:
-              'There is a flag in that config worth knowing: '
-              'include-system-site-packages. Set it true and the environment '
-              'can see the base installation\'s packages as well. It is '
-              'occasionally useful for heavyweight system-installed libraries, '
-              'and it is usually a mistake, because it reintroduces the '
-              'invisible coupling you created the environment to escape.',
+              'There\'s a sneaky little flag in that config file called include-system-site-packages. '
+              'Set it to true and your isolated toolbox suddenly has a window into the system-wide '
+              'one — your venv can see packages installed globally. It sounds convenient, right? '
+              '"I already have NumPy installed, why install it again?" But here\'s the trap: you '
+              'just reintroduced invisible coupling. Your project now silently depends on whatever '
+              'version happens to be on the system, and when you move to another machine or deploy, '
+              'everything breaks. It\'s like saying "I\'ll just borrow my neighbor\'s tools" — works '
+              'great until they move away. Leave it false unless you have a very specific, documented reason.',
           startMs: 236000,
           endMs: 310000,
         ),
@@ -746,13 +836,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd5',
           speaker: 'Host',
           text:
-              'Now distribution formats. A source distribution — an sdist — is '
-              'a tarball of your source that has to be built on the target '
-              'machine. A wheel is a zip of the already-built package with a '
-              'standard name encoding the Python version, ABI and platform it '
-              'targets. Installing a wheel is essentially unzip and copy, which '
-              'is why it is fast and why it does not need a compiler on the '
-              'user\'s machine.',
+              'Now let\'s talk distribution formats, because this is where "it works on my machine" '
+              'often dies. A source distribution — an sdist — is like shipping someone a bag of flour, '
+              'eggs, and sugar with a recipe. They have to bake the cake themselves, and if they '
+              'don\'t have an oven or the right pan, they\'re stuck. A wheel, on the other hand, is '
+              'the finished cake in a box — just unzip and serve. It\'s a zip archive with a '
+              'standardized filename that encodes the Python version, ABI, and platform it targets. '
+              'Installing a wheel is literally unzip-and-copy, which is why it\'s blazing fast and '
+              'why the end user doesn\'t need a C compiler installed. Pure magic, but with a clear '
+              'engineering reason behind it.',
           startMs: 310000,
           endMs: 398000,
         ),
@@ -760,13 +852,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd6',
           speaker: 'Guest',
           text:
-              'Pure-Python packages produce one universal wheel. Anything with '
-              'C extensions needs a wheel per platform, which is what the '
-              'manylinux standard exists to define — a baseline of system '
-              'libraries a Linux wheel may rely on. When pip says it is '
-              '"building wheel for something" and then fails on a missing '
-              'header, that is the moment you learn no matching wheel was '
-              'published for your platform.',
+              'Here\'s where it gets practical. Pure-Python packages — no C code — produce one '
+              'universal wheel that works everywhere. It\'s like a PDF: same file, any device. '
+              'But anything with C extensions needs a wheel per platform — one for macOS, one for '
+              'Windows, one for Linux. The manylinux standard exists to define a baseline of system '
+              'libraries a Linux wheel can count on. When pip starts printing "building wheel for '
+              'something" and then explodes with a missing header file error, you\'ve just learned '
+              'that no pre-built wheel was published for your platform, so pip is trying to compile '
+              'from source — and your machine isn\'t set up for it. It\'s like ordering a pre-built '
+              'desk and getting a box of lumber instead because they were out of stock for your model.',
           startMs: 398000,
           endMs: 482000,
         ),
@@ -774,13 +868,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd7',
           speaker: 'Host',
           text:
-              'The build backend interface is the other standard worth knowing. '
-              'pyproject dot toml declares which backend to use, pip installs '
-              'that backend into an isolated build environment, then calls '
-              'well-defined hooks on it to produce the wheel. That is why '
-              'setuptools, hatchling, flit and poetry-core are '
-              'interchangeable from the installer\'s point of view — they all '
-              'implement the same interface.',
+              'The build backend interface is the unsung hero making all of this work. You declare '
+              'your build backend in pyproject.toml — maybe hatchling, maybe setuptools — and pip '
+              'reads that, installs the backend into its own isolated temporary environment, then '
+              'calls a set of well-defined hooks on it to produce the wheel. It\'s like a universal '
+              'coffee pod machine: doesn\'t matter if the pod is from Nespresso, Keurig, or some '
+              'artisan roaster — they all implement the same interface, so the machine just works. '
+              'That\'s why hatchling, flit, setuptools, and poetry-core are interchangeable from the '
+              'installer\'s perspective. They all speak the same build protocol. This standardization '
+              'is what rescued Python packaging from the wild west of custom setup.py scripts.',
           startMs: 482000,
           endMs: 566000,
         ),
@@ -788,13 +884,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd8',
           speaker: 'Guest',
           text:
-              'Version specifiers deserve precision as well. Double-equals pins '
-              'exactly. Greater-than-or-equal sets a floor. The tilde-equals '
-              'operator is compatible-release — tilde equals one point four '
-              'point two allows one point four point anything but not one point '
-              'five. For libraries, set a floor at the oldest version you '
-              'actually test, and add an upper bound only when you know a '
-              'future major release will break you.',
+              'Let\'s get precise about version specifiers, because sloppy versioning causes more '
+              'production incidents than you\'d believe. Double-equals is a padlock — "requests==2.28.0" '
+              'means exactly that and nothing else. Greater-than-or-equal sets a floor: '
+              '"requests>=2.28" accepts anything newer. The tilde-equals is the compatible-release '
+              'operator and it\'s the one people misuse most: "requests~=1.4.2" means "at least 1.4.2 '
+              'but less than 1.5" — it only bumps the patch version. For libraries especially, '
+              'set your floor at the oldest version you actually test against. Only add an upper '
+              'bound like "<2.0" when you know for a fact that the next major release breaks your '
+              'API. Upper bounds are constraints, and every unnecessary constraint is a potential '
+              'conflict waiting to bite someone downstream.',
           startMs: 566000,
           endMs: 652000,
         ),
@@ -802,12 +901,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd9',
           speaker: 'Host',
           text:
-              'On the tooling layer: uv, Poetry, PDM and Hatch each add a '
-              'resolver with a lock file, project scaffolding and a run command. '
-              'uv is dramatically faster because it is written in Rust and '
-              'caches aggressively. But all of them produce ordinary wheels '
-              'from ordinary pyproject files, so the choice is about workflow '
-              'ergonomics and not about lock-in.',
+              'Now the tooling landscape, because you\'ll see a lot of names thrown around. uv, '
+              'Poetry, PDM, Hatch — they all sit on top of the same standards and add a dependency '
+              'resolver with a lock file, project scaffolding, and a convenient run command. Think '
+              'of them as different brands of the same kitchen appliance — they all bake the cake, '
+              'but the knobs and buttons are in different places. uv is dramatically faster because '
+              'it\'s written in Rust with aggressive caching — it feels like going from dial-up to '
+              'fiber. But here\'s the key thing none of the marketing tells you: every single one '
+              'of these tools produces ordinary wheels from ordinary pyproject.toml files. There\'s '
+              'no lock-in. You can switch from Poetry to uv and your package still builds. Pick '
+              'based on workflow ergonomics, not fear of being trapped.',
           startMs: 652000,
           endMs: 728000,
         ),
@@ -815,12 +918,17 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd10',
           speaker: 'Guest',
           text:
-              'Two practices to end on. Use pipx for command-line tools you '
-              'want globally — it gives each tool its own hidden environment, '
-              'so installing two tools with conflicting dependencies just '
-              'works. And never sudo pip install: the system interpreter '
-              'belongs to your operating system, and recent Pythons will refuse '
-              'you anyway with an externally-managed-environment error.',
+              'Two parting practices that will save you real pain. First: pipx. When you want '
+              'a command-line tool available everywhere — black, ruff, httpie — use pipx install. '
+              'It gives each tool its own hidden, isolated environment, so two tools with '
+              'diametrically opposed dependency requirements can coexist happily. It\'s like giving '
+              'each tool its own private apartment instead of making them share a dorm room. '
+              'Second, and I cannot stress this enough: never, ever sudo pip install. The system '
+              'Python belongs to your operating system. It\'s not yours to mess with — it\'s like '
+              'borrowing the landlord\'s toolkit and swapping out their drill for a different one. '
+              'Recent Python versions will flat-out refuse with an "externally managed environment" '
+              'error, and that\'s a good thing. Use a venv for project work, pipx for global tools, '
+              'and leave the system Python alone.',
           startMs: 728000,
           endMs: 810000,
         ),

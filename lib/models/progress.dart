@@ -8,6 +8,7 @@ class LessonProgress {
     this.practiceDone = false,
     this.listenDone = false,
     this.reviewDone = false,
+    this.playDone = false,
     this.lastPodcastPositionMs = 0,
     this.lastVisitedAt,
     this.completedAt,
@@ -19,13 +20,14 @@ class LessonProgress {
   final bool practiceDone;
   final bool listenDone;
   final bool reviewDone;
+  final bool playDone;
 
   /// Playback position to resume the podcast from.
   final int lastPodcastPositionMs;
 
   final DateTime? lastVisitedAt;
 
-  /// Set when the fourth and final mode is completed.
+  /// Set when the fifth and final mode is completed.
   final DateTime? completedAt;
 
   bool isDone(LessonMode mode) => switch (mode) {
@@ -33,12 +35,13 @@ class LessonProgress {
     LessonMode.practice => practiceDone,
     LessonMode.listen => listenDone,
     LessonMode.review => reviewDone,
+    LessonMode.play => playDone,
   };
 
   int get completedModeCount =>
       LessonMode.values.where(isDone).length;
 
-  /// 0.0 - 1.0 across the four lesson modes.
+  /// 0.0 - 1.0 across the five lesson modes.
   double get fractionComplete => completedModeCount / LessonMode.values.length;
 
   bool get isComplete => completedModeCount == LessonMode.values.length;
@@ -50,6 +53,7 @@ class LessonProgress {
     bool? practiceDone,
     bool? listenDone,
     bool? reviewDone,
+    bool? playDone,
     int? lastPodcastPositionMs,
     DateTime? lastVisitedAt,
     DateTime? completedAt,
@@ -60,6 +64,7 @@ class LessonProgress {
       practiceDone: practiceDone ?? this.practiceDone,
       listenDone: listenDone ?? this.listenDone,
       reviewDone: reviewDone ?? this.reviewDone,
+      playDone: playDone ?? this.playDone,
       lastPodcastPositionMs:
           lastPodcastPositionMs ?? this.lastPodcastPositionMs,
       lastVisitedAt: lastVisitedAt ?? this.lastVisitedAt,
@@ -73,5 +78,6 @@ class LessonProgress {
     LessonMode.practice => copyWith(practiceDone: done),
     LessonMode.listen => copyWith(listenDone: done),
     LessonMode.review => copyWith(reviewDone: done),
+    LessonMode.play => copyWith(playDone: done),
   };
 }

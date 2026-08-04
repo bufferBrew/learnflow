@@ -1,5 +1,6 @@
 import '../../models/content_block.dart';
 import '../../models/exercise.dart';
+import '../../models/game.dart';
 import '../../models/lesson.dart';
 import '../../models/podcast.dart';
 import '../../models/review.dart';
@@ -16,6 +17,7 @@ const Lesson generatorsLesson = Lesson(
   read: _read,
   practice: _practice,
   podcast: _podcast,
+  play: _play,
   review: _review,
   sources: _sources,
 );
@@ -595,6 +597,122 @@ print(first_errors(log_stream(), 3))
   ],
 );
 
+const GameContent _play = GameContent(
+  games: [
+    OutputPredictorGame(
+      id: 'game-generators-exhaustion',
+      title: 'What does this print?',
+      instructions: 'Pick what the final print statement prints.',
+      code: '''
+def countdown(start):
+    while start > 0:
+        yield start
+        start -= 1
+
+
+gen = countdown(3)
+next(gen)
+print(list(gen))
+''',
+      options: ['[3, 2, 1]', '[2, 1]', '[3, 2]', '[]'],
+      correctIndex: 1,
+      explanation:
+          'next(gen) resumes the generator to its first yield and consumes '
+          '3. list(gen) then drains whatever is left — 2 and 1 — the value '
+          'already taken is gone for good.',
+    ),
+    FillBlankGame(
+      id: 'game-generators-yield',
+      title: 'Turn a function into a generator',
+      instructions: 'Type the missing keyword.',
+      code: '''
+def countdown(start):
+    while start > 0:
+        ______ start
+        start -= 1
+''',
+      blanks: [Blank(answer: 'yield', hint: 'freezes the function and hands back a value')],
+    ),
+    BugHuntGame(
+      id: 'game-generators-off-by-one',
+      title: 'Find the off-by-one',
+      instructions: 'Tap the line that lets one extra value through.',
+      code: '''
+class CountdownIterator:
+    def __init__(self, current):
+        self.current = current
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.current < 0:
+            raise StopIteration
+        self.current -= 1
+        return self.current + 1
+''',
+      buggyLine: 9,
+      explanation:
+          'The guard should stop at zero, not below it. With "< 0", current '
+          'can reach exactly 0 and still pass the check, so __next__ '
+          'produces one extra, incorrect value before StopIteration finally '
+          'fires.',
+      fixedCode: '''
+class CountdownIterator:
+    def __init__(self, current):
+        self.current = current
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.current <= 0:
+            raise StopIteration
+        self.current -= 1
+        return self.current + 1
+''',
+    ),
+    SyntaxScrambleGame(
+      id: 'game-generators-scramble',
+      title: 'Rebuild the filtering generator',
+      instructions: 'Drag or use the arrows to put these lines back in order.',
+      lines: [
+        'def non_empty(lines):',
+        '    for line in lines:',
+        '        if line.strip():',
+        '            yield line',
+      ],
+    ),
+    TermMatchGame(
+      id: 'game-generators-terms',
+      title: 'Match the vocabulary',
+      instructions: 'Tap a term, then tap its definition.',
+      pairs: [
+        TermPair(
+          term: 'Iterable vs iterator',
+          definition: 'Can produce iterators, versus actually produces values.',
+        ),
+        TermPair(
+          term: 'StopIteration',
+          definition: 'The exception an iterator raises to signal it is exhausted.',
+        ),
+        TermPair(
+          term: 'Generator function',
+          definition: 'A function containing yield, which returns a generator object.',
+        ),
+        TermPair(
+          term: 'yield from',
+          definition: 'Delegates the whole iteration protocol to a sub-iterable.',
+        ),
+        TermPair(
+          term: 'itertools',
+          definition: 'The standard library of lazy iterator building blocks.',
+        ),
+      ],
+    ),
+  ],
+);
+
 const PodcastScript _podcast = PodcastScript(
   variants: {
     PodcastVariant.concise: ScriptVariant(
@@ -605,10 +723,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c1',
           speaker: 'Host',
           text:
-              'Iterators and generators, condensed. Every for loop in Python is '
-              'the same three steps: call iter on the object, call next '
-              'repeatedly, and stop when next raises StopIteration. That is the '
-              'entire protocol, and everything else is built on it.',
+              'Iterators and generators, condensed. Here\'s the mental model that makes everything click: '
+              'imagine a water tap versus a bucket. A bucket stores all the water at once — you need a '
+              'big bucket for a big job. A tap gives you water on demand, one drop at a time, and you '
+              'only pay for what you use. That\'s the difference between a list and a generator. Every '
+              'for loop in Python follows the same three-step dance: call iter() on the object, call '
+              'next() repeatedly, and stop when next() raises StopIteration. That\'s the entire protocol.',
           startMs: 0,
           endMs: 42000,
         ),
@@ -616,10 +736,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c2',
           speaker: 'Guest',
           text:
-              'Keep two words apart. An iterable can produce an iterator — a '
-              'list is one. An iterator is the thing that actually yields '
-              'values and gets used up. A list can be looped over a hundred '
-              'times because each loop asks it for a fresh iterator.',
+              'Two words to keep separate, and mixing them up causes real bugs. An iterable is like a '
+              'recipe book — it can produce an iterator, but it isn\'t one itself. A list is iterable: '
+              'you can ask it for a fresh iterator a hundred times. An iterator is the thing actually '
+              'dishing out values — like a chef reading from that recipe, one dish at a time, and once '
+              'the chef finishes the recipe, they\'re done. That\'s exhaustion: you can loop over a list '
+              'forever because each loop gets a new chef, but an iterator is a one-way trip.',
           startMs: 42000,
           endMs: 90000,
         ),
@@ -627,10 +749,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c3',
           speaker: 'Host',
           text:
-              'A generator is an iterator written as a function. Put yield in '
-              'the body and calling it runs nothing — you get a generator '
-              'object back. Each next resumes the body until the next yield and '
-              'then freezes every local variable exactly where they were.',
+              'A generator is an iterator that you write as a function instead of a class. The magic word '
+              'is yield. Put yield in a function body and calling that function runs absolutely nothing — '
+              'you get a generator object back, like getting a remote control before the TV is even on. '
+              'Each next() press resumes the body until the next yield, then freezes every local variable '
+              'exactly where they were. It\'s like pausing a movie: the frame freezes, and when you hit '
+              'play, it resumes from exactly that spot with everything intact.',
           startMs: 90000,
           endMs: 136000,
         ),
@@ -638,11 +762,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c4',
           speaker: 'Guest',
           text:
-              'The payoff is laziness. Memory is proportional to one item '
-              'rather than the whole sequence, you can stop consuming as soon '
-              'as you have what you need, and infinite sequences become '
-              'perfectly reasonable objects. Swap square brackets for round '
-              'ones and a comprehension becomes lazy too.',
+              'The payoff is laziness, and laziness here is a superpower. Memory use is proportional to '
+              'one item rather than the whole collection — like reading a book one page at a time instead '
+              'of photocopying the entire thing before you start. You can stop consuming the moment you '
+              'find what you need, and infinite sequences become perfectly reasonable objects. Swap square '
+              'brackets for parentheses and a list comprehension becomes a lazy generator — one character, '
+              'completely different memory profile.',
           startMs: 136000,
           endMs: 182000,
         ),
@@ -650,10 +775,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c5',
           speaker: 'Host',
           text:
-              'One catch: a generator is exhausted after a single pass. If you '
-              'need the values twice, keep a list or call the function again. '
-              'And learn itertools — chain, islice, groupby and friends are all '
-              'lazy and compose into pipelines.',
+              'One catch that bites everyone at least once: a generator is exhausted after a single pass. '
+              'Call list() on the same generator twice and the second call gives you an empty list — '
+              'silently. It\'s like a bag of chips: once you eat them, they\'re gone. If you need the values '
+              'twice, store them in a list or call the generator function again for a fresh batch. And '
+              'learn itertools — chain, islice, groupby and friends are all lazy building blocks that '
+              'compose into elegant pipelines without writing a single loop by hand.',
           startMs: 182000,
           endMs: 216000,
         ),
@@ -667,10 +794,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 's1',
           speaker: 'Host',
           text:
-              'Iteration today — and this is one of those topics where the '
-              'mechanism is genuinely small and the consequences are enormous. '
-              'Once you can see the protocol under the for loop, generators, '
-              'itertools and even async stop looking like separate features.',
+              'Iteration today — and this is one of those topics where the mechanism is genuinely tiny '
+              'but the consequences are enormous. Let me give you the analogy that makes everything click: '
+              'think of a generator like a lazy friend who only does work when you specifically ask. '
+              'You say "give me the next thing" and they go do one unit of work and hand it back. '
+              'They don\'t do all the work upfront — they wait until you ask. That\'s exactly how '
+              'yield works. Once you can see the iteration protocol hiding under every for loop, '
+              'generators, itertools, and even async all start looking like the same idea dressed '
+              'in slightly different clothes.',
           startMs: 0,
           endMs: 48000,
         ),
@@ -678,11 +809,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 's2',
           speaker: 'Guest',
           text:
-              'The protocol is two methods. dunder-iter returns an iterator; '
-              'dunder-next returns the next value or raises StopIteration. An '
-              'iterable has the first, an iterator has both, and an iterator\'s '
-              'dunder-iter returns itself. That last detail is why you can pass '
-              'an iterator anywhere an iterable is expected.',
+              'The protocol is just two methods. __iter__ returns an iterator; __next__ returns the next '
+              'value or raises StopIteration. An iterable has the first, an iterator has both, and here\'s '
+              'the key detail: an iterator\'s __iter__ returns itself. That means you can pass an iterator '
+              'anywhere an iterable is expected — it\'s like a tool that is also its own instruction manual. '
+              'A list has __iter__ but not __next__, which is why you can loop over it forever. A generator '
+              'has both, which is why it burns out after one pass.',
           startMs: 48000,
           endMs: 116000,
         ),
@@ -690,11 +822,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 's3',
           speaker: 'Host',
           text:
-              'The consequence people trip over is exhaustion. A list can be '
-              'iterated forever because every loop asks it for a new iterator. '
-              'A generator, a file object, a zip or a map is already an '
-              'iterator, so a second pass sees nothing at all — usually as a '
-              'silent empty result rather than an error, which is worse.',
+              'The consequence that trips people up is exhaustion. A list can be iterated forever because '
+              'every for loop asks it for a brand new iterator — like a vending machine that never runs out '
+              'because each customer gets their own fresh supply. A generator, a file object, a zip or a '
+              'map is already an iterator, so a second pass sees absolutely nothing. And here\'s the cruel '
+              'part: it fails silently — an empty result instead of an error. You\'ll scratch your head '
+              'wondering where all your data went when the generator simply finished its one and only lap.',
           startMs: 116000,
           endMs: 186000,
         ),
@@ -702,12 +835,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 's4',
           speaker: 'Guest',
           text:
-              'You can implement the protocol with a class, and it is worth '
-              'doing once. You keep the position as instance state, return self '
-              'from dunder-iter, and raise StopIteration when you are done. But '
-              'in practice you write a generator function instead: the same '
-              'behaviour, a fifth of the code, and no chance of forgetting the '
-              'StopIteration.',
+              'You can implement the iteration protocol with a class, and it\'s absolutely worth doing once — '
+              'like learning to drive stick before driving automatic. You keep the position as instance '
+              'state, return self from __iter__, and raise StopIteration when you\'re done. But in practice '
+              'you write a generator function instead: the same behavior, about a fifth of the code, and '
+              'absolutely no chance of forgetting to raise StopIteration. Going from a 20-line class to '
+              'a 4-line generator function is one of those moments where Python feels like cheating.',
           startMs: 186000,
           endMs: 252000,
         ),
@@ -715,11 +848,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 's5',
           speaker: 'Host',
           text:
-              'Here is the mental model for yield. Calling a generator function '
-              'executes none of its body — it hands you a generator object. The '
-              'first next runs until the first yield, produces that value and '
-              'freezes everything: locals, the instruction pointer, any '
-              'enclosing try blocks. The next call resumes from exactly there.',
+              'Here\'s the mental model for yield that I want you to tattoo on your brain. Calling a '
+              'generator function executes exactly none of its body — it hands you a generator object, '
+              'like being handed a wrapped present that you haven\'t opened yet. The first next() call '
+              'runs the body until the first yield, produces that value, and freezes everything: all '
+              'local variables, the exact instruction pointer, any enclosing try blocks. The next call '
+              'resumes from precisely that frozen moment. It\'s like hitting pause on a movie — the '
+              'frame is preserved perfectly, and play resumes from that exact spot.',
           startMs: 252000,
           endMs: 320000,
         ),
@@ -727,11 +862,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 's6',
           speaker: 'Guest',
           text:
-              'That gives you three things you cannot get otherwise. Constant '
-              'memory, because only one item exists at a time. Early exit, '
-              'because unconsumed values are never computed — any and next stop '
-              'the moment they are satisfied. And infinite sequences, which are '
-              'perfectly safe as long as something downstream limits them.',
+              'That freezing mechanism gives you three superpowers you simply cannot get otherwise. First, '
+              'constant memory — only one item exists at a time, like reading a book with a bookmark instead '
+              'of photocopying the whole thing. Second, early exit — unconsumed values are never computed, '
+              'so any() and next() stop the instant they\'re satisfied. Third, infinite sequences — you can '
+              'have a generator that counts to infinity and it\'s perfectly safe as long as something '
+              'downstream limits it. It\'s like having a tap connected to an infinite water supply: it only '
+              'flows when you turn the handle.',
           startMs: 320000,
           endMs: 388000,
         ),
@@ -739,12 +876,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 's7',
           speaker: 'Host',
           text:
-              'Generators also compose. Each stage is a generator consuming the '
-              'previous one, so a filter-map-limit pipeline moves a single item '
-              'through end to end rather than building three intermediate '
-              'lists. And yield from delegates an entire sub-iterable, which '
-              'makes recursive generators — flattening a tree, walking nested '
-              'data — trivial.',
+              'Generators also compose beautifully, like Lego bricks snapping together. Each stage is a '
+              'generator consuming the previous one, so a filter-map-limit pipeline moves one item through '
+              'end to end — no intermediate lists built along the way. And yield from is the secret weapon: '
+              'it delegates an entire sub-iterable, which makes recursive generators — flattening a deeply '
+              'nested tree, walking through JSON — almost trivially short. It\'s like telling a coworker '
+              '"handle this whole sub-task and give me the results" instead of micromanaging every step.',
           startMs: 388000,
           endMs: 452000,
         ),
@@ -752,11 +889,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 's8',
           speaker: 'Guest',
           text:
-              'Finally, itertools. chain to concatenate, islice to slice '
-              'anything including an infinite source, groupby for runs of equal '
-              'keys — remember to sort first — plus count, cycle, product and '
-              'combinations. They are all lazy, they all return iterators, and '
-              'they save you writing the fiddly version yourself.',
+              'Finally, itertools — your standard toolkit of lazy building blocks. chain to concatenate '
+              'without copying anything, like linking train cars together. islice to slice anything including '
+              'an infinite source — yes, you can take items 1000 to 1010 from an infinite counter. groupby '
+              'for runs of equal keys — but remember to sort first, because it only groups consecutive '
+              'matches, like a bouncer checking IDs one at a time at the door. Plus count, cycle, product, '
+              'and combinations. They\'re all lazy, they all return iterators, and they save you from '
+              'writing the fiddly, bug-prone version yourself.',
           startMs: 452000,
           endMs: 498000,
         ),
@@ -770,10 +909,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd1',
           speaker: 'Host',
           text:
-              'The long form on iteration. We are covering the protocol, what a '
-              'generator object actually contains, the send and throw channel, '
-              'yield from, resource management inside generators, itertools in '
-              'anger, and the direct line from all this to async await.',
+              'The long form on iteration — pull up a chair, we\'re going deep. Here\'s the big picture '
+              'I want you to hold: everything from a simple for loop to async/await is built on the same '
+              'frozen-function trick. Think of a generator like a TV episode on pause — the show freezes '
+              'mid-frame, all the actors, props, and lighting exactly where they were. When you hit play, '
+              'it resumes from that precise moment. That\'s yield. Today we\'re covering the protocol in '
+              'microscopic detail, what a generator object actually contains under the hood, the send/throw '
+              'two-way channel, yield from, resource management inside generators, itertools put to real '
+              'work, and the direct evolutionary line from all of this to async/await.',
           startMs: 0,
           endMs: 62000,
         ),
@@ -781,11 +924,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd2',
           speaker: 'Guest',
           text:
-              'The protocol first, precisely. iter of x calls x dot dunder-iter '
-              'and, failing that, falls back to the old sequence protocol using '
-              'dunder-getitem with integer indexes from zero until IndexError. '
-              'That legacy path still works and is why some very old classes '
-              'iterate without ever defining dunder-iter.',
+              'The protocol first, with surgical precision. iter(x) calls x.__iter__ and, if that fails, '
+              'falls back to the ancient sequence protocol: it calls x.__getitem__ with integer indexes '
+              'starting from zero until IndexError is raised. That legacy path still works today, which is '
+              'why some very old classes iterate without ever defining __iter__. It\'s like an old house '
+              'that still has a coal chute — nobody uses it anymore, but it\'s still there and technically '
+              'functional. Knowing this explains mysterious iteration behavior in codebases that predate '
+              'the modern protocol.',
           startMs: 62000,
           endMs: 146000,
         ),
@@ -793,13 +938,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd3',
           speaker: 'Host',
           text:
-              'StopIteration being an exception is an interesting design '
-              'choice. It means ending iteration uses the same unwinding '
-              'machinery as any error, and it means an accidental '
-              'StopIteration leaking out of a generator body used to silently '
-              'truncate the caller\'s loop. PEP 479 fixed that: inside a '
-              'generator, a StopIteration that escapes is now converted into a '
-              'RuntimeError.',
+              'StopIteration being an exception is a fascinating design choice with real consequences. '
+              'It means ending iteration piggybacks on the same stack-unwinding machinery as any error. '
+              'And it used to have a nasty footgun: if a StopIteration accidentally leaked out of a '
+              'generator body — say, from calling next() on something inside the generator — it would '
+              'silently truncate the caller\'s loop with zero warning. PEP 479 fixed that in Python 3.5: '
+              'inside a generator, a StopIteration that tries to escape is now automatically converted '
+              'into a RuntimeError. It\'s like putting a safety gate at the top of the stairs.',
           startMs: 146000,
           endMs: 232000,
         ),
@@ -807,12 +952,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd4',
           speaker: 'Guest',
           text:
-              'What is a generator object made of? A frame — the same structure '
-              'a normal call uses — that is kept alive between resumptions '
-              'instead of being discarded on return. It holds the locals, the '
-              'value stack and the last instruction offset. Resuming is just '
-              'restoring that frame and jumping back to the offset, which is '
-              'why suspension is cheap.',
+              'What is a generator object made of under the hood? A frame — the exact same data structure '
+              'a normal function call uses — but instead of being discarded when the function returns, it\'s '
+              'kept alive between resumptions. The frame holds all the local variables, the value stack, '
+              'and the last instruction offset. Resuming is literally just restoring that frame and jumping '
+              'back to the saved offset. This is why suspension is cheap: there\'s no serialization, no '
+              'copying — it\'s just keeping a data structure alive that would normally be garbage collected. '
+              'It\'s like putting a bookmark in a book instead of photocopying every page you\'ve read so far.',
           startMs: 232000,
           endMs: 318000,
         ),
@@ -820,12 +966,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd5',
           speaker: 'Host',
           text:
-              'Which leads to the bidirectional channel. yield is an '
-              'expression, not just a statement. gen dot send of value resumes '
-              'the generator and makes the paused yield evaluate to that value, '
-              'so data flows in as well as out. gen dot throw raises an '
-              'exception at the yield point, and gen dot close raises '
-              'GeneratorExit there.',
+              'Which leads us to the bidirectional channel — the part that surprises most people. yield '
+              'isn\'t just a statement; it\'s an expression. gen.send(value) resumes the generator and makes '
+              'the paused yield evaluate to that value, so data flows in as well as out. It\'s like a '
+              'two-way radio instead of a broadcast tower. gen.throw(exc) raises an exception at the exact '
+              'yield point, and gen.close() raises GeneratorExit there. This two-way channel is the '
+              'mechanism that made generator-based coroutines possible before async/await existed — the '
+              'event loop would send results back into generators to drive them forward.',
           startMs: 318000,
           endMs: 404000,
         ),
@@ -833,12 +980,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd6',
           speaker: 'Guest',
           text:
-              'That close behaviour is what makes cleanup work. A try-finally '
-              'or a with block wrapping a yield will run its teardown when the '
-              'generator is closed or collected — the GeneratorExit unwinds it. '
-              'It also means the with statement for a file belongs inside the '
-              'generator, because the body has not run at all when the function '
-              'is called.',
+              'That close behavior is what makes cleanup actually work. A try/finally or a with block '
+              'wrapping a yield will run its teardown when the generator is closed or garbage collected — '
+              'the GeneratorExit exception unwinds it just like any other exception. This is also why '
+              'the with statement for opening a file absolutely must live inside the generator, not '
+              'outside. When you call the generator function, the body hasn\'t run at all yet — so if '
+              'the with were outside, the file would be opened and closed before a single value was '
+              'ever yielded. It\'s like setting up a tent before the camping trip actually starts.',
           startMs: 404000,
           endMs: 486000,
         ),
@@ -846,12 +994,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd7',
           speaker: 'Host',
           text:
-              'yield from is more than a loop shorthand. It delegates the full '
-              'protocol to a sub-generator: values pass out, sent values pass '
-              'in, thrown exceptions pass through, and the sub-generator\'s '
-              'return value becomes the result of the yield from expression. '
-              'That last piece is what made generator-based coroutines '
-              'composable, and PEP 380 was written largely for it.',
+              'yield from is far more than a loop shortcut — it delegates the entire iteration protocol '
+              'to a sub-generator. Values pass out, sent values pass in, thrown exceptions pass through, '
+              'and here\'s the killer feature: the sub-generator\'s return value becomes the result of '
+              'the yield from expression. That last piece is what made generator-based coroutines '
+              'composable, and PEP 380 was written largely to enable it. It\'s like a manager delegating '
+              'an entire project to a team lead — communication flows both ways, and when the team lead '
+              'finishes, they hand back a final report.',
           startMs: 486000,
           endMs: 570000,
         ),
@@ -859,12 +1008,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd8',
           speaker: 'Guest',
           text:
-              'On itertools, a few patterns worth internalising. islice is your '
-              'slice for anything that is not a sequence. tee duplicates one '
-              'iterator into several — but it buffers, so if one branch races '
-              'ahead you pay memory for the gap. groupby only groups '
-              'consecutive items, so it is a streaming operation and you must '
-              'sort by the same key first if you want true grouping.',
+              'On itertools, a few patterns worth cementing in your brain. islice is your slice operator '
+              'for anything that isn\'t a sequence — including infinite generators. tee duplicates one '
+              'iterator into several, but here\'s the catch: it buffers internally, so if one branch races '
+              'far ahead of the others, you pay in memory for the gap between them. It\'s like two people '
+              'reading the same book at different speeds — the library has to keep photocopies of the pages '
+              'the faster reader has already passed. groupby only groups consecutive items, so it\'s a '
+              'streaming operation, not a database GROUP BY — you must sort by the same key first if you '
+              'want true grouping behavior.',
           startMs: 570000,
           endMs: 656000,
         ),
@@ -872,13 +1023,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd9',
           speaker: 'Host',
           text:
-              'There are real costs to weigh too. Laziness moves work to the '
-              'consumption site, so exceptions surface far from the call that '
-              'created the generator and tracebacks get harder to read. You '
-              'cannot take the length of a generator or index into it. And a '
-              'deep pipeline of tiny generators has per-item overhead that a '
-              'single loop does not — for small collections a list '
-              'comprehension is often both clearer and faster.',
+              'There are real costs to weigh too — generators aren\'t magic fairy dust. Laziness moves work '
+              'to the consumption site, so exceptions surface far from the call that created the generator, '
+              'and tracebacks become harder to read. You can\'t take len() of a generator or index into it — '
+              'it\'s a one-way stream, not a random-access array. And a deep pipeline of tiny generators has '
+              'per-item overhead that a single tight loop doesn\'t have. For small collections, a plain list '
+              'comprehension is often both clearer and faster. The rule of thumb: use generators when the '
+              'data might be large, infinite, or you might stop early. Use lists when the data is small and '
+              'you need it more than once.',
           startMs: 656000,
           endMs: 748000,
         ),
@@ -886,12 +1038,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd10',
           speaker: 'Guest',
           text:
-              'And the payoff for understanding all of it: async. A native '
-              'coroutine is essentially a generator whose suspension points are '
-              'awaits instead of yields, driven by an event loop that resumes '
-              'it when a result is ready. Before async def existed, asyncio '
-              'literally used generators and send. Everything you just learned '
-              'about frozen frames is the same machinery.',
+              'And the payoff for understanding all of this: async. A native coroutine is essentially a '
+              'generator whose suspension points are awaits instead of yields, driven by an event loop '
+              'that resumes it when a result is ready. Before async def existed, asyncio literally used '
+              'generators decorated with @asyncio.coroutine, and the event loop would call .send() to '
+              'push results back in. Everything you just learned about frozen frames, the instruction '
+              'pointer, and the value stack — that\'s the exact same machinery powering every async web '
+              'server you\'ve ever used. Generators aren\'t just a feature; they\'re the foundation that '
+              'async Python was built on top of.',
           startMs: 748000,
           endMs: 830000,
         ),
@@ -899,11 +1053,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd11',
           speaker: 'Host',
           text:
-              'Summary: iterable produces iterator, iterator yields until '
-              'StopIteration, generators write that in a fifth of the code, '
-              'laziness buys memory and early exit at the cost of one-shot '
-              'consumption, and itertools already has the piece you were about '
-              'to write.',
+              'Summary: iterable produces iterator, iterator yields until StopIteration, generators write '
+              'that in a fifth of the code by freezing their frame at every yield, laziness buys you '
+              'constant memory and early exit at the cost of one-shot consumption and no random access, '
+              'and itertools already has the building block you were about to write from scratch. Master '
+              'these and you\'ve mastered the engine under every for loop in the language.',
           startMs: 830000,
           endMs: 846000,
         ),

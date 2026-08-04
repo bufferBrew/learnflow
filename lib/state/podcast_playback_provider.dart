@@ -3,14 +3,25 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../models/podcast.dart';
+import 'tts_engine.dart';
+
+/// Whether the transport speaks the transcript with a real voice, or only
+/// simulates the timing the way this player always has.
+enum PlaybackMode { tts, simulated }
 
 /// Playback state for the podcast player.
 ///
-/// There is no audio: a [Timer.periodic] advances [currentTimeMs] and the UI
-/// reads that position. Everything a real transport would do — speed, seeking,
-/// section jumps, stopping at the end — is modelled here, so the widgets stay
-/// dumb and the behaviour stays unit testable.
+/// Position is always driven by a [Timer.periodic] advancing [currentTimeMs]
+/// — that part was never audio and still isn't. What real audio there is
+/// layers on top of it: in [PlaybackMode.tts], each segment's text is handed
+/// to a [TtsEngine] as the position enters it, at a rate matching [speed].
+/// Any failure — no engine on this platform, an unsupported call on web —
+/// drops [mode] to [PlaybackMode.simulated] and playback carries on exactly
+/// as it always did, timing only.
 class PodcastPlaybackProvider extends ChangeNotifier {
+  PodcastPlaybackProvider({TtsEngine? ttsEngine})
+    : _ttsEngine = ttsEngine ?? FlutterTtsEngine();
+
   static const double minSpeed = 0.5;
   static const double maxSpeed = 2.0;
 
@@ -19,10 +30,10 @@ class PodcastPlaybackProvider extends ChangeNotifier {
   static const List<double> speedSteps = <double>[
     0.5,
     0.75,
+    0.85,
     1.0,
     1.25,
     1.5,
-    1.75,
     2.0,
   ];
 
@@ -37,13 +48,19 @@ class PodcastPlaybackProvider extends ChangeNotifier {
   static const int sectionRestartWindowMs = 2000;
 
   Timer? _ticker;
+  final TtsEngine _ttsEngine;
+  // Fire-and-forget TTS calls can settle after dispose(); ChangeNotifier
+  // throws on notifyListeners() past that point, so every async completion
+  // that might notify checks this first.
+  bool _disposed = false;
 
   String? _lessonId;
   PodcastScript? _script;
   PodcastVariant _variant = PodcastVariant.standard;
   int _currentTimeMs = 0;
   bool _isPlaying = false;
-  double _speed = 1.0;
+  double _speed = 0.85;
+  PlaybackMode _mode = PlaybackMode.tts;
 
   String? get lessonId => _lessonId;
 
@@ -56,6 +73,8 @@ class PodcastPlaybackProvider extends ChangeNotifier {
   bool get isPlaying => _isPlaying;
 
   double get speed => _speed;
+
+  PlaybackMode get mode => _mode;
 
   ScriptVariant? get currentScript => _script?.variantFor(_variant);
 
@@ -89,6 +108,7 @@ class PodcastPlaybackProvider extends ChangeNotifier {
     _currentTimeMs = 0;
     _isPlaying = false;
     _stopTicker();
+    _syncSpeech();
     notifyListeners();
   }
 
@@ -98,6 +118,7 @@ class PodcastPlaybackProvider extends ChangeNotifier {
     if (_currentTimeMs >= durationMs) _currentTimeMs = 0;
     _isPlaying = true;
     _startTicker();
+    _syncSpeech();
     notifyListeners();
   }
 
@@ -105,6 +126,7 @@ class PodcastPlaybackProvider extends ChangeNotifier {
     if (!_isPlaying) return;
     _isPlaying = false;
     _stopTicker();
+    _syncSpeech();
     notifyListeners();
   }
 
@@ -120,6 +142,9 @@ class PodcastPlaybackProvider extends ChangeNotifier {
       _isPlaying = false;
       _stopTicker();
     }
+    // A seek always interrupts whatever was being spoken, whether playback
+    // keeps going (the new segment starts) or just stopped (nothing should).
+    _syncSpeech();
     notifyListeners();
   }
 
@@ -170,7 +195,10 @@ class PodcastPlaybackProvider extends ChangeNotifier {
     if (_speed == clamped) return;
     _speed = clamped;
     // The running ticker keeps its 100ms cadence; only the distance covered per
-    // tick changes, so there is nothing to restart.
+    // tick changes, so there is nothing to restart there — but a spoken
+    // utterance already in flight was recorded at the old rate, so it is
+    // restarted at the new one.
+    _syncSpeech();
     notifyListeners();
   }
 
@@ -185,6 +213,7 @@ class PodcastPlaybackProvider extends ChangeNotifier {
     _currentTimeMs = 0;
     _isPlaying = false;
     _stopTicker();
+    _syncSpeech();
     notifyListeners();
   }
 
@@ -194,8 +223,27 @@ class PodcastPlaybackProvider extends ChangeNotifier {
     _currentTimeMs = 0;
     _isPlaying = false;
     _stopTicker();
+    _syncSpeech();
     notifyListeners();
   }
+
+  /// Switches between a real voice and the simulated timing this player has
+  /// always had. Picking [PlaybackMode.tts] does not guarantee speech: the
+  /// next segment boundary still goes through the same fallible path as
+  /// automatic switching, and drops back to simulated on failure.
+  void setMode(PlaybackMode value) {
+    if (_mode == value) return;
+    _mode = value;
+    if (value == PlaybackMode.simulated) {
+      unawaited(_stopSpeaking());
+    } else {
+      _syncSpeech();
+    }
+    notifyListeners();
+  }
+
+  void toggleMode() =>
+      setMode(_mode == PlaybackMode.tts ? PlaybackMode.simulated : PlaybackMode.tts);
 
   void _startTicker() {
     // Cancel first: the provider is app-scoped, so a second play() must never
@@ -216,6 +264,7 @@ class PodcastPlaybackProvider extends ChangeNotifier {
       return;
     }
 
+    final int previousIndex = currentSegmentIndex;
     final int advance = (tickInterval.inMilliseconds * _speed).round();
     final int next = _currentTimeMs + advance;
     if (next >= total) {
@@ -225,6 +274,57 @@ class PodcastPlaybackProvider extends ChangeNotifier {
     } else {
       _currentTimeMs = next;
     }
+    // Only a section boundary (or landing on the end) needs a new utterance;
+    // restarting speech on every 100ms tick would chop it to pieces.
+    if (!_isPlaying || currentSegmentIndex != previousIndex) _syncSpeech();
+    notifyListeners();
+  }
+
+  /// Stops whatever is being spoken and, if the transport is playing in
+  /// [PlaybackMode.tts], starts the current segment's text at the current
+  /// [speed]. A no-op in [PlaybackMode.simulated].
+  void _syncSpeech() {
+    if (_mode == PlaybackMode.simulated) return;
+    unawaited(_speakCurrentSegment());
+  }
+
+  Future<void> _speakCurrentSegment() async {
+    await _stopSpeaking();
+    if (_mode == PlaybackMode.simulated || !_isPlaying) return;
+    final PodcastSegment? segment = currentSegment;
+    if (segment == null) return;
+
+    // A short pause between segments keeps the conversation from sounding
+    // rushed — 300ms is roughly a natural breath or turn-taking gap.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+
+    // Re-check state after the pause: playback might have been paused or
+    // the position might have moved to a different segment while waiting.
+    if (_mode == PlaybackMode.simulated || !_isPlaying) return;
+    if (currentSegment?.id != segment.id) return;
+
+    try {
+      await _ttsEngine.setSpeechRate(_speed);
+      await _ttsEngine.speak(segment.text);
+    } catch (_) {
+      // No engine on this platform, or a call the web implementation does
+      // not support: the transcript-synced timing already running is a
+      // complete experience on its own, so playback just keeps going.
+      _switchToSimulated();
+    }
+  }
+
+  Future<void> _stopSpeaking() async {
+    try {
+      await _ttsEngine.stop();
+    } catch (_) {
+      _switchToSimulated();
+    }
+  }
+
+  void _switchToSimulated() {
+    if (_disposed || _mode == PlaybackMode.simulated) return;
+    _mode = PlaybackMode.simulated;
     notifyListeners();
   }
 
@@ -233,6 +333,11 @@ class PodcastPlaybackProvider extends ChangeNotifier {
     // A periodic timer outliving its provider would tick against a disposed
     // notifier — and hang `flutter test` with a pending timer.
     _stopTicker();
+    _disposed = true;
+    // Silences its own errors directly, rather than through _stopSpeaking:
+    // that path can call _switchToSimulated, and notifyListeners on a
+    // disposed ChangeNotifier throws.
+    unawaited(_ttsEngine.stop().catchError((_) {}));
     super.dispose();
   }
 }

@@ -1,5 +1,6 @@
 import '../../models/content_block.dart';
 import '../../models/exercise.dart';
+import '../../models/game.dart';
 import '../../models/lesson.dart';
 import '../../models/podcast.dart';
 import '../../models/review.dart';
@@ -18,6 +19,7 @@ const Lesson trainingVsInferenceLesson = Lesson(
   read: _read,
   practice: _practice,
   podcast: _podcast,
+  play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
 );
@@ -752,12 +754,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c1',
           speaker: 'Host',
           text:
-              'Two phases. Training is when the model changes: data goes in, a '
-              'loss says how wrong it is, the weights move. Inference is when '
-              'the model is frozen: data goes in, one forward pass, an answer '
-              'comes out, nothing about the model changes. Training is '
-              'expensive and occasional. Inference is cheap per call and '
-              'happens constantly.',
+              'Think of a restaurant kitchen. Training is the chef '
+              'practising — tasting dishes, adjusting seasonings, getting '
+              'better with every attempt. That is the training phase: the model '
+              'sees data, measures how wrong it is, and tweaks its internal '
+              'knobs. Inference is dinner service — the recipes are locked in, '
+              'orders fly in, plates go out, nothing about the menu changes. '
+              'Training happens once in the back. Inference happens constantly '
+              'at the front, and it has to be fast.',
           startMs: 0,
           endMs: 44000,
         ),
@@ -765,10 +769,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c2',
           speaker: 'Guest',
           text:
-              'And the reason that split matters for evaluation is that a model '
-              'can memorise. Score it on the rows it trained on and you are '
-              'measuring memory, not learning. Only data it has never seen '
-              'tells you whether it generalises.',
+              'And that split is why evaluation is tricky. If you taste your '
+              'own cooking and declare it excellent, nobody is surprised — '
+              'you have been adjusting it to your own palate. That is the '
+              'training score. To know if strangers will actually like your '
+              'food, you need a tasting panel that never saw the kitchen. Only '
+              'data the model has never touched tells you whether it learned '
+              'to cook or just memorised the one dish you practised.',
           startMs: 44000,
           endMs: 88000,
         ),
@@ -776,11 +783,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c3',
           speaker: 'Host',
           text:
-              'Hence three sets. Train, which the optimiser fits against. '
-              'Validation, which you look at while choosing models and '
-              'hyperparameters. And test, which you do not touch until the very '
-              'end, because the moment you make a decision based on a set, you '
-              'have started fitting to it.',
+              'Hence three buckets. Training data is your practice kitchen '
+              'where the chef experiments. Validation data is the sous-chef '
+              'who tastes and says "more salt" — you make decisions based on '
+              'those scores. Test data is the food critic who visits exactly '
+              'once at the end. The moment you adjust your recipe in response '
+              'to what the critic said, they stop being an honest critic and '
+              'become part of your tasting panel.',
           startMs: 88000,
           endMs: 136000,
         ),
@@ -788,11 +797,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c4',
           speaker: 'Guest',
           text:
-              'If the dataset is small, a single split is noisy, so use k-fold '
-              'cross-validation: train k times, hold out a different fifth each '
-              'time, report the mean and the spread. If the dataset is huge or '
-              'training is slow, one big held-out split is fine and far '
-              'cheaper.',
+              'Small dataset? A single taste test with five people could '
+              'easily be a weird five. Cross-validation is the fix: split into '
+              'five groups, train on four, test on the fifth, rotate who sits '
+              'out, average the results. It costs five times the kitchen time '
+              'but gives you a much steadier number. Huge dataset? One big '
+              'held-out group works fine and is way cheaper.',
           startMs: 136000,
           endMs: 182000,
         ),
@@ -800,12 +810,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c5',
           speaker: 'Host',
           text:
-              'Last idea: learning curves. Plot training and validation score '
-              'together. Diverging curves — train improving while validation '
-              'stalls or worsens — is overfitting, and the answer is more data, '
-              'regularisation or a simpler model. Both curves flat at a bad '
-              'number is underfitting, and the answer is more capacity, better '
-              'features or longer training.',
+              'Last concept, and it is the most useful. Plot two curves: '
+              'training score and validation score. If they are diverging — '
+              'you keep getting better at practice but worse at the tasting '
+              'panel — you are overfitting. You are memorising the practice '
+              'dishes instead of learning to cook. More data or simpler '
+              'recipes. If both are flat and bad — underfitting — you need '
+              'more practice time or a bigger kitchen.',
           startMs: 182000,
           endMs: 226000,
         ),
@@ -819,10 +830,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's1',
           speaker: 'Host',
           text:
-              'The clearest way to see the two phases is the API again. fit '
-              'writes the parameters. predict only reads them. Everything you '
-              'do before deployment is the first call; everything that happens '
-              'after deployment is the second, millions of times over.',
+              'Think of training versus inference like the difference between '
+              'rehearsing for a play and performing on opening night. During '
+              'rehearsals — training — you try things, get notes, adjust. The '
+              'fit function is the whole rehearsal process: data goes in, '
+              'mistakes get measured, everything gets tweaked. On opening '
+              'night — inference — the script is locked. Lines come in, lines '
+              'go out, nothing about the performance changes. The predict '
+              'function is the show. Millions of people see the show; '
+              'only the cast saw the rehearsals.',
           startMs: 0,
           endMs: 52000,
         ),
@@ -830,11 +846,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 's2',
           speaker: 'Guest',
           text:
-              'And notice what is fixed even during training. The weights move. '
-              'The architecture does not. The learning rate, the depth, the '
-              'feature definitions — those are hyperparameters, chosen by you '
-              'before the run. At serve time even the weights stop moving, so '
-              'the only variable left is the input.',
+              'And notice what is frozen even during the rehearsal phase. The '
+              'weights move — those are the lines being adjusted. But the '
+              'architecture does not: how many actors, what the stage looks '
+              'like. The learning rate, the number of layers, the feature '
+              'definitions — those are hyperparameters, chosen by you the '
+              'director before rehearsals even start. At showtime even the '
+              'weights are frozen, so the only variable left is the input.',
           startMs: 52000,
           endMs: 114000,
         ),
@@ -842,10 +860,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 's3',
           speaker: 'Host',
           text:
-              'The constraints could not be more different. Six hours of '
-              'training on a GPU, four milliseconds per prediction in a request '
-              'a customer is waiting on. Nobody watches the six hours. Everybody '
-              'feels the four milliseconds, and that is the number your product '
+              'The constraints are wildly different and that shapes every '
+              'engineering decision. Your rehearsal might take six hours on a '
+              'GPU cluster — nobody is waiting in the audience. But each '
+              'prediction during the show has to happen in four milliseconds '
+              'because there is a customer staring at a loading spinner. Nobody '
+              'feels the six hours. Everybody feels the four milliseconds. That '
+              'latency number, not the training time, is what your product '
               'lives or dies by.',
           startMs: 114000,
           endMs: 178000,
@@ -854,12 +875,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 's4',
           speaker: 'Guest',
           text:
-              'On to evaluation. Any model with enough capacity can memorise '
-              'its training set — imagine a lookup table that stores every row '
-              'and its answer. A hundred percent on training, useless on '
-              'anything new. So the training score conflates memorisation with '
-              'generalisation and you cannot untangle them from that number '
-              'alone.',
+              'Now evaluation. Here is the uncomfortable truth: a model with '
+              'enough capacity can memorise. Imagine a student who writes down '
+              'every practice problem and its answer on a cheat sheet, then '
+              'takes the practice test with the sheet in hand. Perfect score. '
+              'Now give them a new problem — disaster. That is what a training '
+              'score measures: memorisation plus learning, with no way to '
+              'separate them. Only data the model has never laid eyes on can '
+              'tell you which one you got.',
           startMs: 178000,
           endMs: 242000,
         ),
@@ -867,12 +890,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 's5',
           speaker: 'Host',
           text:
-              'Three-way split. Sixty, twenty, twenty is the classic shape, '
-              'though with millions of rows you go closer to ninety-eight, one, '
-              'one because one percent is already plenty. Train fits. '
-              'Validation chooses. Test confirms, exactly once. And for '
-              'classification, always stratify, so an eight percent positive '
-              'class stays eight percent in every split.',
+              'Three-way split. Think of it like developing a vaccine. The '
+              'training set is the lab — you formulate it here. The validation '
+              'set is the clinical trial — you test it on a group you have not '
+              'touched, and if it does not work you go back and reformulate. '
+              'The test set is the real-world deployment — you measure '
+              'effectiveness in the wild exactly once, and you do not get to '
+              'tweak the formula afterwards. The classic split is 60-20-20, '
+              'but with millions of patients one percent is already thousands '
+              'of people. And always stratify — keep the proportions of sick '
+              'and healthy identical across all groups.',
           startMs: 242000,
           endMs: 308000,
         ),
@@ -880,11 +907,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 's6',
           speaker: 'Guest',
           text:
-              'The rule people break is tuning against test. You look, you are '
-              'disappointed, you change a setting, you look again. That test '
-              'score is now a validation score — you selected against it — and '
-              'the honest number is gone. Either report it as validation or '
-              'hold out something fresh.',
+              'The rule people break constantly: tuning against the test set. '
+              'You look at your test score, you are disappointed, you tweak a '
+              'hyperparameter, you look again. That test score is now a '
+              'validation score — you selected against it. You have burned its '
+              'honesty. Either report it as validation going forward, or hold '
+              'out a fresh batch of data. This is not pedantry. Teams that tune '
+              'against test routinely ship models that land several points '
+              'worse in production than the slide deck promised.',
           startMs: 308000,
           endMs: 372000,
         ),
@@ -892,12 +922,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's7',
           speaker: 'Host',
           text:
-              'Cross-validation is the fix for noisy single splits. Five folds, '
-              'five models, every row validated once. You get a mean and a '
-              'standard deviation, and that spread is what tells you whether a '
-              'rival model is genuinely better or just lucky. It costs five '
-              'trainings, which is why you use it on small data and skip it '
-              'when a run takes days.',
+              'Cross-validation is the fix when your dataset is small enough '
+              'that a single split could be a fluke. Imagine tasting five '
+              'people\'s opinions on your cooking. That is one noisy number. '
+              'Now imagine doing that five times with five different groups and '
+              'averaging. The mean is steadier, and the spread across those '
+              'five taste tests tells you whether your rival chef is genuinely '
+              'better or just got lucky with the panel. It costs five times '
+              'the kitchen time, which is why you use it on small data and '
+              'skip it when a single training run takes days.',
           startMs: 372000,
           endMs: 436000,
         ),
@@ -905,12 +938,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 's8',
           speaker: 'Guest',
           text:
-              'And read your learning curves before you change anything. Big '
-              'gap between train and validation means overfitting: more data, '
-              'regularisation, early stopping, simpler model. No gap but a bad '
-              'score means underfitting: more capacity, better features, longer '
-              'training. Those two prescriptions point in opposite directions, '
-              'so diagnosing first genuinely saves you weeks.',
+              'And the diagnostic to carry into every project: learning '
+              'curves. Big gap between training and validation? Overfitting — '
+              'you are getting better at the practice test but not the real '
+              'thing. More data, more regularisation, stop earlier. No gap but '
+              'both scores are bad? Underfitting — you have not even learned '
+              'the practice material. More capacity, better features, train '
+              'longer. Those two prescriptions are complete opposites, which is '
+              'why diagnosing first genuinely saves you weeks of wasted work.',
           startMs: 436000,
           endMs: 498000,
         ),
@@ -924,12 +959,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd1',
           speaker: 'Host',
           text:
-              'Long form on training versus inference. The route: what actually '
-              'differs between the two phases, the discipline of held-out data, '
-              'the splits that random shuffling gets wrong, cross-validation '
-              'and its costs, learning curves as a diagnostic, and finally the '
-              'part nobody teaches early enough — what inference costs once '
-              'real traffic arrives.',
+              'Deep dive on training versus inference. We are going to walk '
+              'through what actually differs between the two phases at the '
+              'mechanical level, the discipline of splitting data honestly, the '
+              'cases where a naive random split lies to you, cross-validation '
+              'and its real costs, learning curves as a diagnostic tool, and '
+              'the part nobody teaches early enough — what inference actually '
+              'costs once real traffic starts hitting your model.',
           startMs: 0,
           endMs: 66000,
         ),
@@ -937,12 +973,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd2',
           speaker: 'Guest',
           text:
-              'Start with the mechanics. In training you run a forward pass, '
-              'compute a loss, run a backward pass to get gradients, and update '
-              'the parameters. At inference you run the forward pass and stop. '
-              'That is why inference is roughly a third of the arithmetic and '
-              'why you can throw away the optimiser state, the gradients and '
-              'the training graph entirely when you ship.',
+              'Mechanics first. During training you run three things: a forward '
+              'pass to compute predictions, a backward pass to compute '
+              'gradients for every weight, and an optimizer step to update the '
+              'weights using those gradients. At inference you do only the '
+              'forward pass. That is why inference is roughly a third of the '
+              'computational cost. You can throw away the optimizer state, the '
+              'gradients, and the entire training graph when you ship. What you '
+              'keep is just the fitted weights — like serving a finished meal '
+              'and throwing away the recipe notes and tasting spoons.',
           startMs: 66000,
           endMs: 144000,
         ),
@@ -950,12 +989,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd3',
           speaker: 'Host',
           text:
-              'And the artefact you ship is the fitted parameters plus the '
-              'fitted preprocessing, not the training script. That second half '
-              'is where teams get hurt. Your scaler learned a mean and a '
-              'standard deviation from the training data; those exact numbers '
-              'have to travel with the model. Recompute them on live traffic '
-              'and you have quietly changed the model.',
+              'And the artefact you ship must include the preprocessing, not '
+              'just the model. Here is where teams get hurt in production. Your '
+              'scaler learned a mean and standard deviation from the training '
+              'data — "houses average 1,800 square feet with a spread of 400". '
+              'Those exact numbers have to travel with the model. If you '
+              'recompute the mean on live traffic, you have quietly changed the '
+              'meaning of every input your model sees. The weights stayed the '
+              'same but the model is now doing something different. Ship the '
+              'fitted transformer alongside the model, or wrap both in a '
+              'Pipeline so they stay glued together.',
           startMs: 144000,
           endMs: 216000,
         ),
@@ -963,13 +1006,17 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd4',
           speaker: 'Guest',
           text:
-              'Now the evaluation discipline. Three sets, three jobs. Train is '
-              'what the optimiser sees. Validation is what your decisions see — '
-              'model family, depth, learning rate, when to stop. Test is what '
-              'nobody sees until the end. The reason for three rather than two '
-              'is selection bias: try forty configurations against validation '
-              'and the winner is part real improvement, part luck on those '
-              'particular rows.',
+              'Now evaluation discipline, which is where most projects quietly '
+              'overstate their results. Three sets, three entirely separate '
+              'jobs. Training is what the optimizer sees — it is the lab bench. '
+              'Validation is what your decisions see — model family, depth, '
+              'learning rate, when to stop. Every time you look at validation '
+              'and change something, you are selecting. Test is what nobody '
+              'sees until the end. The reason three beats two is selection '
+              'bias: try forty configurations against validation and the winner '
+              'is partly genuinely better and partly lucky on those specific '
+              'rows. The test set is the control group for that selection '
+              'effect, and it only works if you look exactly once.',
           startMs: 216000,
           endMs: 292000,
         ),
@@ -977,12 +1024,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd5',
           speaker: 'Host',
           text:
-              'Stratification deserves a moment. On an eight percent positive '
-              'class, a two-thousand-row validation split without stratify can '
-              'land at six point nine or nine point two percent positives. That '
-              'alone moves precision and recall further than most of the model '
-              'changes you will make, so you end up comparing splits while '
-              'believing you are comparing models.',
+              'Stratification deserves its moment. Imagine you are looking for '
+              'a disease that affects eight percent of the population. You '
+              'randomly split 2,000 people into a validation group. Without '
+              'stratification, that group could easily have 138 sick people '
+              'instead of 160 — or 184. That swing alone shifts your precision '
+              'and recall more than most model changes you will make. You would '
+              'be comparing different validation sets while believing you are '
+              'comparing different models. stratify=y fixes this by keeping the '
+              'class balance identical across every split.',
           startMs: 292000,
           endMs: 366000,
         ),
@@ -990,12 +1040,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd6',
           speaker: 'Guest',
           text:
-              'And a random split is only valid if rows are independent. Two '
-              'cases where they are not. Grouped data: one patient with forty '
-              'scans, one user with three hundred sessions. Shuffle and '
-              'near-duplicates land on both sides, and the model gets credit '
-              'for recognising the individual. Use GroupKFold with the patient '
-              'or user id as the group.',
+              'And a random split assumes every row is an independent draw from '
+              'the same distribution. Two cases where that lie will burn you. '
+              'Grouped data: one patient contributes forty MRI scans. Shuffle '
+              'randomly and scans from the same brain land on both sides of the '
+              'split. The model is not learning to detect tumours — it is '
+              'learning to recognize Sarah\'s particular brain shape. Use '
+              'GroupKFold with patient ID as the group, so every individual '
+              'lands entirely on one side.',
           startMs: 366000,
           endMs: 442000,
         ),
@@ -1003,13 +1055,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd7',
           speaker: 'Host',
           text:
-              'The other case is time. If you are forecasting, shuffling puts '
-              'the future in the training set and the past in the test set, and '
-              'the model gets to peek at outcomes it is meant to predict. Split '
-              'on a cut-off date. For the cross-validation version, '
-              'TimeSeriesSplit trains on a prefix and validates on the block '
-              'immediately after, expanding the prefix each fold. Never shuffle '
-              'temporal data.',
+              'The other case is time. If you are forecasting — stock prices, '
+              'weather, demand — shuffling puts tomorrow\'s data in the '
+              'training set and yesterday\'s in the test set. The model gets to '
+              'see the outcome of trends it is supposed to predict. It looks '
+              'brilliant in evaluation and useless in production. Split on a '
+              'cut-off date. For cross-validation, TimeSeriesSplit trains on '
+              'an expanding prefix and validates on the block immediately '
+              'after. Never, ever shuffle temporal data.',
           startMs: 442000,
           endMs: 518000,
         ),
@@ -1018,12 +1071,14 @@ const PodcastScript _podcast = PodcastScript(
           speaker: 'Guest',
           text:
               'Cross-validation itself. K-fold gives you k scores instead of '
-              'one, and the standard deviation across them is the number that '
-              'stops you chasing noise. Stratified k-fold does it while '
-              'preserving class balance in every fold, which for imbalanced '
-              'problems is not optional. The one rule: cross-validate the whole '
-              'pipeline, so the scaler and the encoder are refitted per fold '
-              'and never see the held-out rows.',
+              'one, and the standard deviation across them is what stops you '
+              'from chasing noise. Stratified k-fold preserves class balance in '
+              'every fold — for imbalanced problems this is not optional. The '
+              'one iron rule: cross-validate the entire pipeline, not just the '
+              'model. If you fit the scaler once on all the data and then '
+              'cross-validate only the model, every fold has leaked information '
+              'about the held-out rows through the preprocessing. Fit scaler '
+              'and encoder fresh on each training fold.',
           startMs: 518000,
           endMs: 596000,
         ),
@@ -1031,13 +1086,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd9',
           speaker: 'Host',
           text:
-              'Learning curves. Plot train and validation together against '
-              'epochs or against training-set size. Diverging lines — train '
-              'still falling, validation flattening then rising — is '
-              'overfitting, and the turning point is where early stopping '
-              'should fire. Two lines close together at a mediocre level is '
-              'underfitting, and it is a completely different disease with a '
-              'completely different treatment.',
+              'Learning curves. Plot training and validation error together '
+              'against epochs. Diverging lines — training keeps falling, '
+              'validation flattens then climbs — that is overfitting, and the '
+              'turning point is exactly where early stopping should fire. Two '
+              'lines plateaued close together at a mediocre level — that is '
+              'underfitting, a completely different disease. Same-looking chart '
+              'at a glance, opposite remedy. This is why the habit of plotting '
+              'both curves on one axis is the cheapest debugger in ML.',
           startMs: 596000,
           endMs: 670000,
         ),
@@ -1045,12 +1101,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd10',
           speaker: 'Guest',
           text:
-              'The size-based curve answers a question people pay for: is more '
-              'data worth buying? If the validation curve is still falling at '
-              'your current dataset size, yes. If it has flattened and there is '
-              'still a large gap, regularisation is the better lever. If it has '
-              'flattened with no gap and a bad score, more data changes nothing '
-              'and you need a different model or better features.',
+              'The size-based curve answers a question teams pay real money '
+              'for: should we buy more data? If validation error is still '
+              'dropping at your current dataset size — yes, every additional '
+              'batch of labelled examples is buying you accuracy. If it has '
+              'flattened but there is still a large gap to training error — '
+              'regularisation is a better investment. If it has flattened with '
+              'no gap and a bad score — more data changes nothing. You need a '
+              'different model architecture or fundamentally better features.',
           startMs: 670000,
           endMs: 746000,
         ),
@@ -1058,13 +1116,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd11',
           speaker: 'Host',
           text:
-              'Now the forward-looking part: inference has an economics of its '
-              'own. Latency budgets are per request, so bigger models cost you '
-              'directly in user-visible time. Batching amortises overhead '
-              'across requests but adds queueing delay. Quantisation — running '
-              'in eight-bit instead of thirty-two-bit — often cuts memory and '
-              'latency several-fold for a small accuracy cost. Distillation '
-              'trains a small model to imitate a large one.',
+              'Now the economics of inference that nobody talks about in '
+              'courses. Latency budgets are per request — bigger models cost '
+              'you directly in milliseconds of user-visible waiting time. '
+              'Batching amortises the overhead across many requests but adds '
+              'queueing delay — your users wait while the batch fills up. '
+              'Quantisation runs the model in 8-bit instead of 32-bit, often '
+              'cutting memory and latency several-fold for a fraction of a '
+              'percent accuracy loss. Distillation trains a small student '
+              'model to imitate a large teacher. All of these are inference '
+              'optimisations that live in the deployment engineer\'s toolbox.',
           startMs: 746000,
           endMs: 814000,
         ),
@@ -1072,12 +1133,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd12',
           speaker: 'Guest',
           text:
-              'Which reframes the whole lesson. Training cost is paid once and '
-              'is a project decision. Inference cost is paid on every request '
-              'forever and is a product decision. The best model on your '
-              'validation set is not automatically the model you ship, and the '
-              'gap between those two sentences is most of what applied machine '
-              'learning engineering actually is.',
+              'Which reframes the whole lesson into one sentence I wish '
+              'everyone heard on day one. Training cost is paid once and is a '
+              'project budget decision. Inference cost is paid on every single '
+              'request forever and is a product decision. The best model on '
+              'your validation set is not automatically the model you ship. '
+              'The gap between those two sentences — picking the model that '
+              'works well enough while being cheap and fast enough to serve — '
+              'is most of what applied ML engineering actually is.',
           startMs: 814000,
           endMs: 876000,
         ),

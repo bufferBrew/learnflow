@@ -1,5 +1,6 @@
 import '../../models/content_block.dart';
 import '../../models/exercise.dart';
+import '../../models/game.dart';
 import '../../models/lesson.dart';
 import '../../models/podcast.dart';
 import '../../models/review.dart';
@@ -17,6 +18,7 @@ const Lesson neuralNetworksLesson = Lesson(
   read: _read,
   practice: _practice,
   podcast: _podcast,
+  play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
 );
@@ -717,11 +719,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c1',
           speaker: 'Host',
           text:
-              'A neuron, honestly described: multiply each input by a weight, '
-              'sum them, add a bias, push the result through a non-linear '
-              'function. That is it. The weights encode a pattern, the bias '
-              'sets how much evidence is needed, and the non-linearity is what '
-              'stops the whole thing from collapsing.',
+              'A neural network in five minutes — and let me skip the brain '
+              'metaphor entirely. Imagine you are at a dim sum restaurant. '
+              'Each dish gets scored on several dimensions — saltiness, '
+              'texture, temperature — and you are trying to predict whether '
+              'your friend will like it. A neuron is just this: multiply each '
+              'score by how much your friend cares about it, add them up, add '
+              'a baseline bias, and run the result through a decision function. '
+              'If the total is positive, they will probably like it. That is '
+              'it — dot product, bias, non-linearity.',
           startMs: 0,
           endMs: 46000,
         ),
@@ -729,11 +735,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c2',
           speaker: 'Guest',
           text:
-              'That collapse point deserves emphasis. Stack a hundred layers '
-              'of pure weighted sums and algebra flattens them into one '
-              'weighted sum. Depth would be worthless. The activation '
-              'function is not a detail on top of the architecture — it is '
-              'the thing that makes architecture matter.',
+              'And here is why the non-linearity is not a detail — it is the '
+              'whole game. Without it, stacking layers is pointless. Imagine '
+              'translating a sentence by putting it through five translators '
+              'in a row, each one just repeating the previous output. You '
+              'would end up with the same translation. That is exactly what '
+              'happens with pure linear layers — they collapse into one. The '
+              'activation function is the thing that makes each layer actually '
+              'transform the signal into something new.',
           startMs: 46000,
           endMs: 94000,
         ),
@@ -741,11 +750,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c3',
           speaker: 'Host',
           text:
-              'A layer is just many neurons sharing an input, which makes it a '
-              'matrix multiply plus a bias vector plus an element-wise '
-              'activation. Batch your examples and it is a matrix times a '
-              'matrix — exactly the operation a GPU does absurdly fast. That '
-              'is the whole reason this field runs on graphics hardware.',
+              'A layer is lots of these neurons all looking at the same input '
+              'at once. Instead of one weight vector, you get a weight matrix. '
+              'The whole layer becomes a matrix multiplication plus a bias '
+              'plus an activation. And when you batch many examples together, '
+              'it is a matrix times a matrix — exactly the operation that '
+              'makes GPUs sing. That is not a coincidence; it is the entire '
+              'reason deep learning runs on graphics hardware.',
           startMs: 94000,
           endMs: 142000,
         ),
@@ -753,11 +764,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c4',
           speaker: 'Guest',
           text:
-              'Activations: ReLU for hidden layers, because its gradient is '
-              'exactly one on the positive side so signal survives depth. '
-              'Output layer is dictated by the task — nothing for regression, '
-              'sigmoid for binary, softmax for multi-class. And softmax on a '
-              'hidden layer is a bug, not a style choice.',
+              'Quick activation tour. ReLU for hidden layers — if the input '
+              'is positive, let it through untouched. If negative, zero it '
+              'out. Dead simple, gradient is exactly one on the active side, '
+              'so signal survives dozens of layers. The output layer is '
+              'dictated by what you are predicting: no activation for '
+              'regression, sigmoid for yes-or-no, softmax for picking one of '
+              'many categories. And putting softmax in the middle of your '
+              'network is not a style choice — it is a bug.',
           startMs: 142000,
           endMs: 190000,
         ),
@@ -765,10 +779,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c5',
           speaker: 'Host',
           text:
-              'Why depth helps: each layer re-coordinates what the last one '
-              'produced, so features compose. XOR is the tiny classic — no '
-              'line can separate it, but one hidden layer bends the space '
-              'until a line can. That is all "learning features" means.',
+              'Why build deep? Here is the intuition. Imagine trying to '
+              'recognise a friend\'s face. A shallow approach is memorising '
+              'every possible photo of them. A deep network first detects '
+              'edges, then shapes, then facial features, then the whole face — '
+              'each layer builds on the previous one. That compositional '
+              'structure is why depth is more efficient than width. The '
+              'classic demo is XOR: no straight line can separate the four '
+              'points, but add one hidden layer and suddenly the space gets '
+              'bent until a clean cut works.',
           startMs: 190000,
           endMs: 228000,
         ),
@@ -782,12 +801,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 's1',
           speaker: 'Host',
           text:
-              'Neural networks, built from the bottom. And I want to start by '
-              'dropping the brain metaphor, because it does more harm than '
-              'good. These are function approximators made of matrix '
-              'multiplications and non-linear squashes. The biology inspired '
-              'the name in the nineteen forties and has been essentially '
-              'irrelevant since.',
+              'Neural networks, built from the ground up. And I want to start '
+              'by dropping the brain metaphor entirely, because it confuses '
+              'more than it clarifies. These are not simulated neurons firing '
+              'in a simulated brain. They are function approximators made of '
+              'matrix multiplications and non-linear squashing functions. The '
+              'biology inspired the name in the 1940s and has been essentially '
+              'irrelevant to how these things actually work ever since. Think '
+              'of them as very flexible curve fitters.',
           startMs: 0,
           endMs: 56000,
         ),
@@ -795,11 +816,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's2',
           speaker: 'Guest',
           text:
-              'The single unit is a dot product between the input and a weight '
-              'vector, plus a bias, then an activation. The dot product is '
-              'literally a similarity score: it is largest when the input '
-              'points the same way as the weights. So each unit is a pattern '
-              'detector, and the bias is its threshold for caring.',
+              'The single unit is beautifully simple. Imagine you are scoring '
+              'job applicants. You have a checklist — years of experience, '
+              'education level, interview score. Each category gets a weight '
+              'reflecting how much you care about it. Multiply, sum, add a '
+              'baseline bias — "am I generally optimistic or pessimistic about '
+              'candidates?" — and push through a decision function. That dot '
+              'product is literally a similarity score. It is largest when the '
+              'input pattern matches the weight pattern. Each neuron is a '
+              'pattern detector, and the bias is its threshold for caring.',
           startMs: 56000,
           endMs: 122000,
         ),
@@ -807,12 +832,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's3',
           speaker: 'Host',
           text:
-              'A layer is many of those detectors on the same input, so the '
-              'weight vector becomes a weight matrix. Get comfortable with the '
-              'shapes: batch by in-features, times in-features by out-features, '
-              'gives batch by out-features. The bias broadcasts across rows. '
-              'Almost every early error is this chain being misaligned by one '
-              'layer.',
+              'A layer is many of these detectors all looking at the same '
+              'input at once. The weight vector becomes a weight matrix. Get '
+              'comfortable with shapes because this is where bugs live: a '
+              'batch of 64 examples, each with 128 features, going through a '
+              'layer with 256 neurons. That is 64 by 128 times 128 by 256 '
+              'equals 64 by 256. The bias of length 256 broadcasts across all '
+              '64 rows. Almost every early error is this chain being '
+              'misaligned by one matrix. Print your shapes after every layer '
+              'on a tiny test batch.',
           startMs: 122000,
           endMs: 188000,
         ),
@@ -820,12 +848,17 @@ const PodcastScript _podcast = PodcastScript(
           id: 's4',
           speaker: 'Guest',
           text:
-              'On activations, the history is instructive. Sigmoid was '
-              'standard for years, and it saturates — the curve goes flat, the '
-              'gradient goes to nearly zero, and in a deep network those tiny '
-              'factors multiply until the first layers receive nothing. That '
-              'is the vanishing gradient problem, and it is a big part of why '
-              'deep networks did not work for so long.',
+              'The history of activations is instructive because it explains '
+              'why deep networks took so long to work. Sigmoid was the '
+              'standard for decades. It squashes any input between 0 and 1, '
+              'which is nice. The problem is saturation: when the input is '
+              'far from zero, the curve goes flat, the gradient goes to nearly '
+              'zero. Stack ten sigmoid layers and even in the best case — the '
+              'middle where the gradient peaks — each layer multiplies the '
+              'signal by one quarter. Ten layers later, the gradient reaching '
+              'the first layer is about one in a million. That is the '
+              'vanishing gradient problem, and it is why deep networks were '
+              'a curiosity rather than a tool for so long.',
           startMs: 188000,
           endMs: 258000,
         ),
@@ -833,12 +866,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 's5',
           speaker: 'Host',
           text:
-              'ReLU fixed it almost embarrassingly simply. Max of zero and the '
-              'input. Gradient exactly one when positive, so the signal passes '
-              'through depth undiminished, and it costs one comparison to '
-              'compute. The catch is dying units — pushed permanently '
-              'negative, gradient zero forever — which leaky ReLU and GELU '
-              'address with a small negative slope.',
+              'ReLU fixed this almost embarrassingly simply. Max of zero and '
+              'the input. Positive? Let it through at full strength, gradient '
+              'exactly one, signal passes through depth undiminished. '
+              'Negative? Zero it out. It costs one comparison operation to '
+              'compute and gives sparse activations — most units are silent '
+              'for any given input. The catch is the dying ReLU problem: a '
+              'unit pushed permanently negative gets zero gradient forever. '
+              'Leaky ReLU gives a small 0.01 slope on the negative side so '
+              'dead units can revive. GELU smooths things further and is the '
+              'standard in modern transformers.',
           startMs: 258000,
           endMs: 326000,
         ),
@@ -846,12 +883,17 @@ const PodcastScript _podcast = PodcastScript(
           id: 's6',
           speaker: 'Guest',
           text:
-              'The output activation is not a preference, it is determined by '
-              'the task. Regression: nothing, you need the full real line. '
-              'Binary: one unit with sigmoid. Multi-class: softmax over one '
-              'unit per class. And in practice you usually emit raw logits and '
-              'let the loss function apply the squash, because the fused '
-              'version is numerically stable.',
+              'The output activation is not a preference — it is dictated by '
+              'what you are predicting. Regression needs the full number line, '
+              'so no activation at all. Binary classification — one unit with '
+              'sigmoid, outputting a probability between 0 and 1. Multi-class '
+              '— softmax over one unit per class, giving a distribution that '
+              'sums to one. And here is a practical trap: in frameworks you '
+              'usually output raw logits and let the loss function apply the '
+              'softmax internally. Applying softmax yourself and then passing '
+              'it to cross-entropy loss applies it twice, flattening your '
+              'probabilities and stalling training. It is the silent killer '
+              'of many a first network.',
           startMs: 326000,
           endMs: 394000,
         ),
@@ -859,12 +901,18 @@ const PodcastScript _podcast = PodcastScript(
           id: 's7',
           speaker: 'Host',
           text:
-              'Why go deep at all? A single wide hidden layer is a universal '
-              'approximator in theory. But the theorem says nothing about how '
-              'wide, or whether gradient descent can find those weights. Depth '
-              'lets features compose — edges to textures to parts to objects — '
-              'and compositional functions need exponentially fewer units deep '
-              'than wide.',
+              'Why go deep at all? A famous theorem says one sufficiently wide '
+              'hidden layer can approximate any continuous function. Sounds '
+              'like the problem is solved — but the theorem is silent on how '
+              'wide "sufficiently" is, and silent on whether gradient descent '
+              'can actually find those weights. In practice the required width '
+              'can be astronomical. Depth is more efficient because real-world '
+              'data has compositional structure. Edges compose into textures, '
+              'textures into parts, parts into objects. Each layer transforms '
+              'what the previous one produced, and compositional functions '
+              'need exponentially fewer units when built deep rather than '
+              'wide. That is the honest sense in which networks "learn '
+              'features".',
           startMs: 394000,
           endMs: 462000,
         ),
@@ -872,13 +920,18 @@ const PodcastScript _podcast = PodcastScript(
           id: 's8',
           speaker: 'Guest',
           text:
-              'One last practical thing: initialisation. All zeros and every '
-              'unit in a layer computes the same thing forever, so your '
-              'five-hundred-unit layer has the power of one. And the scale '
-              'matters too — He initialisation for ReLU, Xavier for tanh, both '
-              'chosen to keep the variance of activations stable as depth '
-              'increases. Frameworks default to sensible choices, which is '
-              'why you rarely think about it until something will not train.',
+              'One last practical thing that every practitioner needs: '
+              'initialisation. Initialise every weight to zero and every unit '
+              'in a layer computes the same output. They receive the same '
+              'gradient. They take the same update. They stay identical '
+              'forever — your 500-unit layer has the representational power of '
+              'one. Random initialisation breaks the symmetry. But the scale '
+              'of that randomness matters enormously. Too big and activations '
+              'explode layer over layer. Too small and the signal shrinks to '
+              'zero. He initialisation for ReLU: variance scaled by 2 over '
+              'fan-in, compensating for ReLU zeroing half its inputs. Xavier '
+              'for tanh. Frameworks default to sensible values, which is why '
+              'you rarely think about it until something refuses to train.',
           startMs: 462000,
           endMs: 516000,
         ),
@@ -892,12 +945,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd1',
           speaker: 'Host',
           text:
-              'The extended tour of neural network fundamentals. We will go '
-              'through the unit, the geometry of what a layer does, the full '
-              'activation zoo with the reasoning behind each, universal '
-              'approximation and why it is less useful than it sounds, the '
-              'depth-versus-width question, initialisation theory, and the '
-              'representation-learning view that ties it together.',
+              'The extended tour of neural networks. Imagine trying to teach '
+              'someone to recognize a painting by showing them every brush '
+              'stroke individually. That is one extreme — memorising pixels. '
+              'Now imagine teaching them to first see edges, then shapes, then '
+              'objects, then the whole composition. That is what deep networks '
+              'do, and in the next forty minutes we are going to walk through '
+              'the unit, the geometry of layers, the full activation zoo, '
+              'universal approximation and why it is less useful than it '
+              'sounds, initialisation theory, and the representation-learning '
+              'view that ties everything together.',
           startMs: 0,
           endMs: 66000,
         ),
@@ -905,12 +962,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd2',
           speaker: 'Guest',
           text:
-              'Geometrically, one unit with a threshold defines a hyperplane. '
-              'The weight vector is the normal — the direction perpendicular '
-              'to the boundary — and the bias moves the plane away from the '
-              'origin. So a single layer partitions space with flat cuts, and '
-              'a network with ReLUs carves space into a very large number of '
-              'polyhedral regions, being linear inside each one.',
+              'Geometrically, a single unit with a threshold defines a '
+              'hyperplane — a flat wall slicing through space. The weight '
+              'vector points perpendicular to that wall, and the bias slides '
+              'the wall closer or further from the origin. So a single layer '
+              'of these units partitions your input space with a collection '
+              'of flat cuts. A deep network with ReLUs carves space into an '
+              'enormous number of polyhedral regions, acting perfectly linear '
+              'inside each region. That piecewise-linear picture is the most '
+              'honest mental model: your network is a very large number of '
+              'tiny linear models, stitched together.',
           startMs: 66000,
           endMs: 152000,
         ),
@@ -918,11 +979,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd3',
           speaker: 'Host',
           text:
-              'That view explains a lot. A ReLU network is a piecewise-linear '
-              'function, and the number of linear regions grows roughly '
-              'exponentially with depth but only polynomially with width. That '
-              'is one of the cleanest formal statements of why depth is more '
-              'economical than width for the same parameter budget.',
+              'And that geometric view explains why depth beats width. The '
+              'number of distinct linear regions a ReLU network can carve '
+              'grows roughly exponentially with depth but only polynomially '
+              'with width. Put another way: for the same number of parameters, '
+              'a deeper but narrower network can represent far more '
+              'complicated decision boundaries than a shallow wide one. That '
+              'is not a heuristic — it is one of the cleanest formal '
+              'statements we have for why deep networks are worth the extra '
+              'engineering pain.',
           startMs: 152000,
           endMs: 230000,
         ),
@@ -930,12 +995,17 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd4',
           speaker: 'Guest',
           text:
-              'Now activations in detail. Sigmoid outputs zero to one and has '
-              'maximum derivative one quarter, at zero. Chain ten sigmoid '
-              'layers and even in the best case the gradient is scaled by a '
-              'quarter to the tenth — about one in a million. Tanh is '
-              'zero-centred with maximum derivative one, which is better, but '
-              'it still saturates at both ends.',
+              'Now activations in detail. Sigmoid outputs between zero and '
+              'one and its derivative peaks at exactly one quarter, right at '
+              'zero input. Chain ten sigmoid layers together and in the '
+              'absolute best case — every pre-activation is exactly zero — the '
+              'gradient reaching the first layer is 0.25 to the tenth power, '
+              'about one in a million. In reality most units saturate far from '
+              'zero, their derivatives are much smaller, and the gradient '
+              'effectively vanishes after just a few layers. Tanh fixes the '
+              'zero-centring — its output ranges from negative one to one — '
+              'and its maximum derivative is one, which is better, but it '
+              'still saturates at both extremes.',
           startMs: 230000,
           endMs: 310000,
         ),
@@ -943,12 +1013,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd5',
           speaker: 'Host',
           text:
-              'ReLU has derivative one for positive input and zero otherwise, '
-              'so it neither shrinks nor amplifies gradient on the active '
-              'path. It is not differentiable at exactly zero, which nobody '
-              'cares about — frameworks just define the subgradient as zero. '
-              'The genuine cost is that a unit whose pre-activation is always '
-              'negative receives zero gradient and is permanently dead.',
+              'ReLU is the clean break. Derivative is exactly one for all '
+              'positive inputs, zero for all negative. Signal passes through '
+              'depth undiminished on the active path. It is not technically '
+              'differentiable at exactly zero, which nobody worries about — '
+              'frameworks just define the subgradient as zero there. The real '
+              'cost is the dying ReLU: once a unit\'s pre-activation is '
+              'always negative — perhaps because a large gradient update '
+              'pushed its bias too far — it receives zero gradient forever '
+              'and contributes nothing. In a large network this is usually '
+              'fine, a form of implicit sparsity. In a small one, you notice.',
           startMs: 310000,
           endMs: 388000,
         ),
@@ -956,13 +1030,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd6',
           speaker: 'Guest',
           text:
-              'Hence the variants. Leaky ReLU gives a small constant slope for '
-              'negatives so a dead unit can revive. ELU and GELU are smooth, '
-              'with GELU weighting the input by its probability under a normal '
-              'distribution — that is the standard in transformers, and the '
-              'smoothness seems to help optimisation in very deep stacks. '
-              'Swish is similar in spirit and was found by architecture '
-              'search.',
+              'Hence the variants. Leaky ReLU gives a small constant slope — '
+              'typically 0.01 — for negative inputs, so a dead unit can '
+              'revive. It is almost free and almost always at least as good. '
+              'ELU smooths the negative side with an exponential curve, '
+              'pushing mean activations closer to zero which can speed '
+              'training. GELU — Gaussian Error Linear Unit — weights the '
+              'input by the probability that a standard normal random variable '
+              'is less than it, producing a smooth S-curve around zero. That '
+              'is the standard in transformers, and the smoothness genuinely '
+              'seems to help optimisation in very deep stacks.',
           startMs: 388000,
           endMs: 468000,
         ),
@@ -970,13 +1047,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd7',
           speaker: 'Host',
           text:
-              'Softmax deserves care because it is not element-wise. It '
-              'exponentiates every score and divides by the total, so every '
-              'output depends on every input and they sum to one. Two '
-              'consequences: it is only meaningful when the outputs really are '
-              'mutually exclusive alternatives, and you must subtract the '
-              'maximum before exponentiating or large logits overflow to '
-              'infinity.',
+              'Softmax deserves special care because it is not element-wise. '
+              'It exponentiates every score and divides by the total, so every '
+              'output depends on every input and they sum exactly to one. Two '
+              'consequences. First, it is only meaningful when the outputs are '
+              'genuinely mutually exclusive — one correct class, the rest '
+              'incorrect. Second, you must subtract the maximum from all '
+              'inputs before exponentiating. Without that shift, large logits '
+              'overflow to infinity — exp of 100 is already 10 to the 43rd — '
+              'and you get NaN gradients. The subtraction is mathematically '
+              'harmless and numerically essential.',
           startMs: 468000,
           endMs: 548000,
         ),
@@ -984,13 +1064,17 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd8',
           speaker: 'Guest',
           text:
-              'On universal approximation: Cybenko and Hornik showed in the '
-              'late eighties that one hidden layer with a squashing '
+              'On universal approximation. Cybenko and Hornik showed in the '
+              'late 1980s that one hidden layer with a squashing '
               'non-linearity can approximate any continuous function on a '
-              'compact domain arbitrarily well. It is an existence result. It '
-              'gives no bound on the number of units, no construction, and no '
-              'promise that gradient descent finds the weights. Treat it as '
-              'reassurance, not as guidance.',
+              'compact domain arbitrarily closely. It is a profound existence '
+              'result and a terrible practical guide. It gives no bound on how '
+              'many hidden units you need — it could be a number with more '
+              'digits than atoms in the universe. It gives no construction. '
+              'And it makes no promise that gradient descent will find those '
+              'weights from finite data. Treat it as philosophical '
+              'reassurance: the architecture can express the answer. Whether '
+              'training finds it is an entirely separate question.',
           startMs: 548000,
           endMs: 628000,
         ),
@@ -998,13 +1082,17 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd9',
           speaker: 'Host',
           text:
-              'Initialisation is where theory earns its keep. Zeros give '
-              'perfect symmetry: identical outputs, identical gradients, '
-              'identical updates, forever. Random breaks it, but the variance '
-              'must be tuned. Glorot derived one over the average of fan-in '
-              'and fan-out to keep activation variance constant for symmetric '
-              'activations; He doubled it for ReLU, because ReLU zeroes half '
-              'the distribution and so halves the variance.',
+              'Initialisation is where a little theory saves you a lot of '
+              'debugging. Zeros give perfect symmetry: identical outputs, '
+              'identical gradients, identical parameter updates, forever. '
+              'Random breaks the symmetry, but the variance must be calibrated. '
+              'Glorot derived one over the average of fan-in and fan-out to '
+              'keep activation variance roughly constant for symmetric '
+              'activations like tanh. He doubled it for ReLU — variance of 2 '
+              'over fan-in — because ReLU zeros out half its inputs and that '
+              'halves the variance passing through. This is not academic '
+              'nitpicking. Get the scale wrong by a factor of two per layer '
+              'and after thirty layers you are off by a billion.',
           startMs: 628000,
           endMs: 712000,
         ),
@@ -1012,12 +1100,17 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd10',
           speaker: 'Guest',
           text:
-              'And this is not academic. Get the scale wrong by a factor of '
-              'two per layer and after thirty layers you are off by a billion '
-              'in one direction or the other — activations saturating, or a '
-              'signal indistinguishable from zero. Modern normalisation layers '
-              'make networks more forgiving about this, but they do not make '
-              'initialisation irrelevant.',
+              'And modern practice has not made this irrelevant — it has made '
+              'it less visible. Batch normalisation and layer normalisation '
+              're-normalise activations after each layer, which makes the '
+              'network far more forgiving of initialisation mistakes. But '
+              'normalisation layers cost compute and memory at every forward '
+              'pass, and they introduce their own subtle coupling between '
+              'examples in a batch. The right initialisation plus the right '
+              'normalisation is better than either alone. Frameworks default '
+              'to sensible He-initialised linear layers, which is why you '
+              'rarely think about this — until you implement something from '
+              'scratch and it will not train.',
           startMs: 712000,
           endMs: 782000,
         ),
@@ -1025,13 +1118,18 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd11',
           speaker: 'Host',
           text:
-              'The unifying idea is representation learning. Everything except '
-              'the final layer exists to change coordinates so that the final '
-              'layer\'s linear separation becomes easy. That is why the '
-              'penultimate layer\'s activations are so useful as embeddings, '
-              'why transfer learning works, and why you can freeze a '
-              'pre-trained backbone and retrain only the head on a few hundred '
-              'examples.',
+              'The unifying idea that ties this whole lesson together is '
+              'representation learning. Everything except the final output '
+              'layer exists for one purpose: to transform the input into '
+              'coordinates where a simple linear separation becomes possible. '
+              'The hidden layers are learning a change of basis — a new '
+              'coordinate system where your classes fall on opposite sides '
+              'of a flat plane. That is why the activations from the '
+              'penultimate layer are so useful as general-purpose embeddings. '
+              'That is why transfer learning works: freeze the early layers '
+              'that learned general features, retrain only the final '
+              'classifier on your specific task. The backbone learned to see; '
+              'you just teach it what to name.',
           startMs: 782000,
           endMs: 850000,
         ),
@@ -1039,11 +1137,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd12',
           speaker: 'Guest',
           text:
-              'Summary: a unit is a dot product plus a bias plus a '
-              'non-linearity; a layer is a matrix multiply; depth composes '
-              'representations; the activation is what makes depth mean '
-              'anything; and initialisation decides whether any of it trains '
-              'at all.',
+              'To summarise: a neuron is a dot product, a bias, and a '
+              'non-linearity. A layer is a matrix multiply. Depth composes '
+              'these transformations so features build on features. The '
+              'activation function is what makes depth meaningful — without '
+              'it, every stack collapses to one layer. And initialisation is '
+              'what decides whether any of this actually trains. Get those '
+              'four things right and you understand the engine of every '
+              'modern deep learning system.',
           startMs: 850000,
           endMs: 870000,
         ),

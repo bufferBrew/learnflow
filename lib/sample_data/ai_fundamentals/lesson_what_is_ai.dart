@@ -1,5 +1,6 @@
 import '../../models/content_block.dart';
 import '../../models/exercise.dart';
+import '../../models/game.dart';
 import '../../models/lesson.dart';
 import '../../models/podcast.dart';
 import '../../models/review.dart';
@@ -18,6 +19,7 @@ const Lesson whatIsAiLesson = Lesson(
   read: _read,
   practice: _practice,
   podcast: _podcast,
+  play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
 );
@@ -607,11 +609,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c1',
           speaker: 'Host',
           text:
-              'Machine learning in about four minutes. Normal programming: you '
-              'know the rule, you write it down. Machine learning: you do not '
-              'know the rule, but you can show a lot of examples of it, and an '
-              'algorithm fits a function that reproduces them. That is the '
-              'entire trade.',
+              'Remember when Netflix recommended a show you ended up loving, '
+              'and you thought — how did it know? That is machine learning in a '
+              'nutshell. Normal programming is like a recipe: you write down '
+              'every step. ML flips that. Instead of writing the rule, you show '
+              'thousands of examples — "this person liked these shows" — and an '
+              'algorithm figures out the pattern. You do not tell it the taste; '
+              'you show it what good taste looks like.',
           startMs: 0,
           endMs: 44000,
         ),
@@ -619,11 +623,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c2',
           speaker: 'Guest',
           text:
-              'And it is only worth taking when the rule is easy to '
-              'demonstrate and hard to state. Spam, handwriting, speech — you '
-              'can label those all day and never write the conditions. VAT '
-              'calculation? Just write the rule. A learned VAT model would be '
-              'slower, less accurate, and impossible to audit.',
+              'Right, and here is the litmus test. If explaining the rule takes '
+              'you two minutes but labelling examples takes two hours, just '
+              'write the rule. Think tax calculations — you know the formula, '
+              'type it in, done. But spotting spam? You would go mad trying to '
+              'list every condition, and spammers would change their tactics '
+              'next week. That is where ML earns its keep — when it is way '
+              'easier to point at examples than to explain why.',
           startMs: 44000,
           endMs: 92000,
         ),
@@ -631,11 +637,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c3',
           speaker: 'Host',
           text:
-              'Vocabulary. Features are the inputs, labels are the answers, '
-              'the model is the function between them. Parameters are the '
-              'numbers training adjusts. Hyperparameters are the numbers you '
-              'fix before training: learning rate, layer count, tree depth. '
-              'Learned versus chosen — that is the split.',
+              'Quick vocabulary check. Features are the inputs — like the '
+              'square footage and number of bedrooms when predicting house '
+              'prices. Labels are the answers — the actual sale price. The '
+              'model is the function that connects them. And here is the one '
+              'that trips people up: parameters are the knobs the model learns '
+              'by itself, like the weight on "number of bedrooms". '
+              'Hyperparameters are the knobs you set beforehand — "how many '
+              'layers should I use?", "how fast should it learn?". Learned '
+              'versus chosen.',
           startMs: 92000,
           endMs: 140000,
         ),
@@ -643,11 +653,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c4',
           speaker: 'Guest',
           text:
-              'The thing that actually matters is generalisation: how it does '
-              'on data it has never seen. Which is why you hold data back. '
-              'Train set fits the parameters, validation set makes your '
-              'decisions, test set gets touched once at the very end. Every '
-              'time you tune against a set, you burn a little of its honesty.',
+              'Now the part that actually matters in practice. '
+              'Generalisation — does this model work on examples it has never '
+              'seen? Because if it only works on the data you trained it on, '
+              'you might as well have written a lookup table. That is why we '
+              'hold data back. Think of it like studying for an exam: the '
+              'training set is your homework, the validation set is the '
+              'practice test you use to see if you are ready, and the test set '
+              'is the real final exam — you only get one honest look.',
           startMs: 140000,
           endMs: 190000,
         ),
@@ -655,11 +668,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c5',
           speaker: 'Host',
           text:
-              'And the one diagnostic: look at training and validation error '
-              'together. Both high means underfitting, add capacity. Training '
-              'near zero and validation climbing means overfitting, add data '
-              'or regularisation. And always compare against the dumbest '
-              'possible baseline before you believe any number.',
+              'And here is the one diagnostic to remember. If your model does '
+              'badly on both homework and practice test — you are underfitting, '
+              'you need to study harder. If you ace the homework but bomb the '
+              'practice test — you memorised the answers instead of '
+              'understanding. That is overfitting. And always, always compare '
+              'your fancy model against the dumbest possible guess — predicting '
+              '"not spam" every single time. You would be shocked how often '
+              'that baseline is hard to beat.',
           startMs: 190000,
           endMs: 216000,
         ),
@@ -673,11 +689,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 's1',
           speaker: 'Host',
           text:
-              'Let us start by deflating the word intelligence. A machine '
-              'learning model is a function with a lot of adjustable numbers '
-              'in it, and training is a search for numbers that make the '
-              'function agree with examples you have collected. That is a '
-              'genuinely powerful idea, and it is also all that is happening.',
+              'Think about the spam folder in your email. For years, engineers '
+              'tried to write rules — "if it says wire transfer, flag it", '
+              '"if it has eight exclamation marks, flag it". Spammers would '
+              'tweak their wording and the rules would break. ML took a '
+              'different approach: instead of writing the rules, we showed the '
+              'computer millions of emails labelled "spam" or "not spam" and '
+              'let it figure out the pattern. That shift — from hand-crafted '
+              'rules to patterns learned from examples — is the whole idea.',
           startMs: 0,
           endMs: 54000,
         ),
@@ -685,12 +704,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 's2',
           speaker: 'Guest',
           text:
-              'The nesting is worth getting right because people use the terms '
-              'interchangeably and they are not. AI is the outer circle — any '
-              'system doing something we consider intelligent, including '
-              'hand-written search and logic with no learning at all. Machine '
-              'learning is the subset that improves from data. Deep learning '
-              'is the subset of that using many-layered neural networks.',
+              'And the terminology gets thrown around loosely, so let me nail '
+              'it down. Imagine three concentric circles. The outermost is AI — '
+              'artificial intelligence. That includes everything a computer '
+              'does that feels smart, even old-school chess engines with '
+              'hardcoded strategies and zero learning. The middle circle is '
+              'machine learning — the part where the system actually improves '
+              'by looking at data. The innermost circle is deep learning — ML '
+              'that uses many-layered neural networks. Every deep learning '
+              'system is ML, but plenty of AI has nothing to do with learning '
+              'at all.',
           startMs: 54000,
           endMs: 118000,
         ),
@@ -698,11 +721,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's3',
           speaker: 'Host',
           text:
-              'Then the dataset. Rows are examples, columns are features, and '
-              'the column you want predicted is the label. Almost every '
-              'library expects an X of shape n-examples by n-features and a y '
-              'of length n-examples. Half of all beginner errors are a shape '
-              'mismatch, and getting fluent with that convention removes them.',
+              'Let me ground this with the house-price example. You have '
+              'spreadsheet rows — each row is one house. The columns are things '
+              'like square metres and number of bedrooms — those are features. '
+              'The price you want to predict — that is the label. Together, a '
+              'row of features plus its label is an example. And every library '
+              'expects the same convention: X is one big matrix, rows are '
+              'examples, columns are features. y is a list of labels the same '
+              'length. Half of all beginner bugs are a shape mismatch — mixing '
+              'up which axis is which.',
           startMs: 118000,
           endMs: 176000,
         ),
@@ -710,12 +737,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's4',
           speaker: 'Guest',
           text:
-              'Feature choice does more work than people expect. Give a model '
-              'a timestamp and it learns very little; give it day-of-week and '
-              'hour-of-day and suddenly the weekly rhythm is learnable. Deep '
-              'learning reduces this hand-crafting by learning representations '
-              'from raw pixels or text, but it never removes the truth '
-              'underneath: the model cannot use information you never gave it.',
+              'And picking the right features is where the real skill is. '
+              'Hand a model a raw timestamp and it learns almost nothing. '
+              'Extract "day of the week" and "hour of the day" from that same '
+              'timestamp and suddenly the weekly rhythm of the data becomes '
+              'learnable. This is feature engineering — you are translating '
+              'raw data into a form the model can actually use. Deep learning '
+              'reduces this work because it learns its own features from raw '
+              'pixels or text, but the principle never goes away: the model '
+              'cannot use information you never gave it.',
           startMs: 176000,
           endMs: 244000,
         ),
@@ -723,12 +753,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 's5',
           speaker: 'Host',
           text:
-              'Now the discipline of splits. Three sets, three distinct jobs. '
-              'Training fits parameters. Validation is where you compare '
-              'candidates and tune hyperparameters. Test is a sealed envelope '
-              'you open once. If you tune against the test set, your final '
-              'number stops being a prediction of production performance and '
-              'becomes a description of how hard you tried.',
+              'Now the discipline of holding data back, and here is a metaphor '
+              'that sticks. Imagine you are studying for a history exam. You '
+              'read the textbook and do the homework — that is your training '
+              'set. You take a practice test to see if you are ready — that is '
+              'your validation set. The real final exam is the test set, and '
+              'you only take it once. If after the practice test you peek at '
+              'the final exam questions and adjust your studying, that final '
+              'grade is no longer honest. ML works the same way: every time you '
+              'look at test-set performance and change something in response, '
+              'you have contaminated that score.',
           startMs: 244000,
           endMs: 314000,
         ),
@@ -736,12 +770,17 @@ const PodcastScript _podcast = PodcastScript(
           id: 's6',
           speaker: 'Guest',
           text:
-              'With a caveat: a random split assumes rows are independent. '
-              'Time series are not — shuffle them and you train on the future. '
-              'Grouped data is not either: if one patient contributes twenty '
-              'scans and they land on both sides of the split, you are '
-              'measuring how well the model recognises that patient, not the '
-              'disease. Split by time, or by group.',
+              'There is a catch with random splits, and it bites people in '
+              'production. A random split assumes every row of your data is '
+              'independent — like shuffled cards. But imagine you are '
+              'predicting tomorrow\'s stock price. Shuffle the data randomly, '
+              'and the model gets to see next week\'s prices while training on '
+              'last week\'s — it learns from the future! Or picture medical '
+              'data where one patient contributed twenty different scans. '
+              'Shuffle those, and some scans from the same patient land in '
+              'both training and test. The model just learns to recognise that '
+              'specific patient, not the disease. For time data, split by '
+              'date. For grouped data, keep each group entirely on one side.',
           startMs: 314000,
           endMs: 380000,
         ),
@@ -749,12 +788,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 's7',
           speaker: 'Host',
           text:
-              'Underfitting and overfitting are read from two curves, not one '
-              'number. Both errors high and close together: the model is too '
-              'simple, give it more capacity or better features. Training '
-              'error near zero with validation error rising: it is memorising, '
-              'so add data, cut capacity, regularise, or stop earlier. The '
-              'gap is the signal.',
+              'Here is the most practical diagnostic in all of ML. Plot two '
+              'lines: training error and validation error. If both are high and '
+              'close together — like a student who does not understand the '
+              'material and scores badly on both homework and practice — you '
+              'are underfitting. The model is too simple. Add more capacity. '
+              'But if training error is near zero and validation error is '
+              'climbing — like the student who memorised every homework answer '
+              'but cannot solve a new problem — that is overfitting. The model '
+              'learned the noise, not the signal. The gap between those two '
+              'curves is the whole diagnostic.',
           startMs: 380000,
           endMs: 444000,
         ),
@@ -762,12 +805,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's8',
           speaker: 'Guest',
           text:
-              'And finish where a project should start: the baseline and the '
-              'metric. Predict the mean, or the majority class, and see what '
-              'that scores. On data that is ninety-five percent negative, '
-              'always-negative gets ninety-five percent accuracy and finds '
-              'nothing. Choose the metric from what the errors cost, before '
-              'you train, and the whole project gets easier to argue about.',
+              'And here is my favourite sanity check, the one I wish every '
+              'team did before presenting results. Before you train anything '
+              'fancy, build the dumbest possible baseline. For a yes-or-no '
+              'problem where 95% of the answers are "no", just guess "no" '
+              'every single time. That scores 95% accuracy and catches zero '
+              'actual problems. If your sophisticated model cannot beat that '
+              'trivial baseline, it is worthless — no matter how impressive the '
+              'architecture sounds. Choose your metric based on what a mistake '
+              'actually costs you, not on what looks good in a slide deck.',
           startMs: 444000,
           endMs: 498000,
         ),
@@ -781,12 +827,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd1',
           speaker: 'Host',
           text:
-              'The long version. We are going to build up from what learning '
-              'from data even means, through the assumptions that make it '
-              'possible, into the vocabulary, the splitting discipline, the '
-              'bias-variance picture, why that picture is incomplete for '
-              'modern networks, and what actually goes wrong in deployed '
-              'systems.',
+              'Welcome to the deep dive. Picture yourself at a farmers\' '
+              'market trying to guess the price of produce just by looking at '
+              'it. You see enough tomatoes sell that you start to get a feel '
+              'for what size and colour mean for price. That is learning from '
+              'data — and in the next forty minutes we are going to unpack '
+              'exactly what that means, from the foundational assumptions '
+              'through the vocabulary, the bias-variance picture, why modern '
+              'networks complicate the classical story, and what actually goes '
+              'wrong when models hit the real world.',
           startMs: 0,
           endMs: 62000,
         ),
@@ -794,11 +843,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd2',
           speaker: 'Guest',
           text:
-              'Start with the assumption underneath everything. We assume '
-              'there is some fixed but unknown distribution generating our '
-              'data, and that training and future examples are drawn from the '
-              'same one. All the theory rests on that. Almost every dramatic '
-              'production failure is that assumption quietly ceasing to hold.',
+              'Let us start with the assumption that everything else rests on. '
+              'When you train an ML model, you are quietly betting that your '
+              'training data and future data come from the same hidden '
+              'distribution — the same underlying pattern. Your tomato prices '
+              'from last summer should be governed by the same rules as this '
+              'summer\'s. All of statistical learning theory rests on that bet. '
+              'And almost every dramatic production failure — the model that '
+              'worked beautifully in the lab and fell apart at launch — is '
+              'that assumption quietly ceasing to be true.',
           startMs: 62000,
           endMs: 140000,
         ),
@@ -806,12 +859,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd3',
           speaker: 'Host',
           text:
-              'Given the assumption, learning is optimisation over a '
-              'hypothesis space. You pick a family of functions — all lines, '
-              'all depth-five trees, all networks of a given architecture — '
-              'and search within it for the member that best matches your '
-              'examples. Two choices define a learner: which family, and how '
-              'you measure "best".',
+              'Given that assumption, learning becomes a search problem. Think '
+              'of it like choosing a pair of glasses. You have a drawer full '
+              'of lenses — that is your hypothesis space, the family of '
+              'functions your model can represent. Maybe it is all straight '
+              'lines, or all depth-five decision trees, or all networks of a '
+              'given architecture. Training means trying on lenses until you '
+              'find the one that makes the data look clearest. Two choices '
+              'define your learner: which drawer of lenses you open, and how '
+              'you measure whether things look sharp.',
           startMs: 140000,
           endMs: 214000,
         ),
@@ -819,13 +875,17 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd4',
           speaker: 'Guest',
           text:
-              'Which brings up the no-free-lunch result: averaged over all '
-              'possible problems, no learner beats any other. That sounds '
-              'nihilistic but the reading is practical — every useful '
-              'algorithm encodes assumptions about which patterns are likely, '
-              'and it works when those assumptions match your data. '
-              'Convolutions assume locality and translation invariance. That '
-              'is why they suit images and not tabular data.',
+              'Which brings us to a result that sounds deeply philosophical '
+              'but is intensely practical — the no-free-lunch theorem. '
+              'Averaged over every possible problem in the universe, no '
+              'learning algorithm beats any other. Flip a coin, consult a '
+              'fortune cookie — same expected performance. That sounds '
+              'nihilistic, but the practical reading is liberating: every '
+              'useful algorithm works because it encodes assumptions about '
+              'which patterns are likely. Convolutions assume nearby pixels '
+              'matter more than faraway ones — that is why they dominate '
+              'image tasks and flop on spreadsheet data. The art is matching '
+              'your algorithm\'s assumptions to your data\'s structure.',
           startMs: 214000,
           endMs: 292000,
         ),
@@ -833,13 +893,17 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd5',
           speaker: 'Host',
           text:
-              'Vocabulary, precisely. A feature is one input dimension. A '
-              'label is the target. An example is a feature vector plus its '
-              'label. Parameters are internal numbers fitted by the optimiser. '
-              'Hyperparameters are configuration you fix beforehand. And '
-              'capacity is how rich the hypothesis space is — how complicated '
-              'a relationship the model could represent if the data demanded '
-              'it.',
+              'Vocabulary time, but with the precision that separates a '
+              'conversation from confusion. A feature is one input dimension — '
+              'the weight of the tomato, the colour intensity. A label is what '
+              'you want predicted — the price. An example is one row: feature '
+              'vector plus, in supervised settings, its label. Parameters are '
+              'the numbers inside the model that training adjusts — think of '
+              'them as the dials the optimiser turns. Hyperparameters are the '
+              'dials you turn before training even starts: how many layers, '
+              'how fast to learn, how long to keep going. And capacity is how '
+              'rich your hypothesis space is — how complicated a relationship '
+              'you could possibly represent, given enough data.',
           startMs: 292000,
           endMs: 366000,
         ),
@@ -847,12 +911,17 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd6',
           speaker: 'Guest',
           text:
-              'Now generalisation properly. Training error is what you can '
-              'measure; generalisation error is what you want and can only '
-              'estimate. The estimate is unbiased exactly once — the first '
-              'time you evaluate on data you have made no decisions from. '
-              'Every subsequent decision informed by that set converts it, '
-              'gradually, into another training set.',
+              'Now generalisation, properly. Here is the uncomfortable truth: '
+              'the training error is the only number you can directly measure. '
+              'The generalisation error — how wrong you will be on tomorrow\'s '
+              'data — is what you actually care about and can only estimate. '
+              'And that estimate is honest exactly once. The very first time '
+              'you evaluate a model on data it never saw, your score is an '
+              'unbiased guess at real-world performance. The moment you look '
+              'at that score and change anything — tweak a hyperparameter, '
+              'switch architectures — you have started fitting to that set. It '
+              'is now contaminated. Every subsequent decision informed by that '
+              'set gradually converts it into just another training set.',
           startMs: 366000,
           endMs: 442000,
         ),
@@ -860,12 +929,18 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd7',
           speaker: 'Host',
           text:
-              'That is the real argument for three splits rather than two, and '
-              'for cross-validation when data is scarce. K-fold gives you k '
-              'estimates from the same rows by rotating which fold is held '
-              'out, which shrinks the variance of your comparison. It costs k '
-              'times the compute, and it does not license you to peek at the '
-              'test set afterwards.',
+              'And this, right here, is the real argument for three splits '
+              'instead of two, and for cross-validation when data is tight. '
+              'Imagine you only have twenty tomatoes to learn from. A single '
+              'validation split of five tomatoes could be a really weird five — '
+              'all the expensive ones, say — and you would never know. K-fold '
+              'cross-validation solves this by rotating which tomatoes get held '
+              'out: train on sixteen, test on four, repeat five times with '
+              'different groups. You get five scores whose average is much more '
+              'trustworthy and whose spread tells you how much to trust it. '
+              'The cost is training five models instead of one, which is why '
+              'we cross-validate on small datasets and skip it when a single '
+              'run takes days.',
           startMs: 442000,
           endMs: 516000,
         ),
@@ -873,13 +948,18 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd8',
           speaker: 'Guest',
           text:
-              'Leakage deserves its own warning because it is the most common '
-              'way a project silently fails. Any preprocessing that learns '
-              'from data — a scaler\'s mean, an imputer\'s median, a target '
-              'encoding — must be fitted on the training fold only and then '
-              'applied to the others. Fit a scaler on the whole dataset and '
-              'the validation score is contaminated before a model has even '
-              'been chosen.',
+              'Leakage deserves its own moment because it is the silent killer '
+              'of ML projects. Picture this: you are training a model to '
+              'predict house prices, and you normalise all your data — compute '
+              'the average square footage and spread — before splitting. '
+              'Congratulations, information about the test houses has leaked '
+              'into your training pipeline. Your validation score is now '
+              'contaminated before you have even picked a model. The rule is '
+              'simple but brutal: any preprocessing step that learns from '
+              'data — scaling, imputing missing values, encoding categories — '
+              'must be fitted on the training fold only. Fit on train, apply '
+              'to everything else. If you fit a scaler on the whole dataset, '
+              'you might as well have let the model peek at the answers.',
           startMs: 516000,
           endMs: 596000,
         ),
@@ -887,13 +967,17 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd9',
           speaker: 'Host',
           text:
-              'The classical decomposition: expected error splits into bias '
-              'squared, variance, and irreducible noise. Bias is being '
-              'systematically wrong because your family cannot express the '
-              'truth. Variance is being unstable because your fit depends '
-              'heavily on which rows you happened to draw. Noise is the floor '
-              'nothing removes — and knowing that floor exists stops you '
-              'chasing an accuracy that was never available.',
+              'The classical decomposition of error is worth knowing because '
+              'it frames every debugging conversation. Expected error splits '
+              'into three pieces: bias squared, variance, and irreducible '
+              'noise. Bias is being systematically wrong — like trying to fit '
+              'a straight line to a curve. No amount of data fixes bias '
+              'because every line you try is wrong everywhere. Variance is '
+              'being unstable — your model would look completely different if '
+              'you had drawn a different training sample. Noise is the floor — '
+              'even the perfect model cannot predict better than the inherent '
+              'randomness in the data. And knowing that floor exists stops you '
+              'from chasing an accuracy that was never physically available.',
           startMs: 596000,
           endMs: 676000,
         ),
@@ -901,13 +985,18 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd10',
           speaker: 'Guest',
           text:
-              'Modern practice complicates it. Very large networks can fit '
-              'training data exactly and still generalise well, and test error '
-              'sometimes falls again past the interpolation point — double '
-              'descent. So capacity alone is a poor predictor of '
-              'generalisation. The practical habit survives, though: plot '
-              'learning curves and let the shapes, not the folklore, tell you '
-              'what to change.',
+              'Modern practice complicates this clean picture deliciously. '
+              'Very large neural networks — the kind with more parameters than '
+              'training examples — can fit their training data perfectly and '
+              'still generalise beautifully. That directly contradicts the '
+              'classical story where "memorising training data" and '
+              '"generalising to new data" were opposites. There is even the '
+              'double descent phenomenon: as you make the model bigger, test '
+              'error goes down, then up, then down again past the point where '
+              'it can memorise everything. So capacity alone is a terrible '
+              'predictor of generalisation for modern networks. The practical '
+              'habit that survives intact: plot learning curves and let the '
+              'shapes tell you what to change, not the folklore.',
           startMs: 676000,
           endMs: 752000,
         ),
@@ -915,12 +1004,18 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd11',
           speaker: 'Host',
           text:
-              'Finally, deployment. Data drift is the inputs changing '
-              'distribution; concept drift is the relationship between inputs '
-              'and label changing. Both degrade a frozen model with no code '
-              'change and no error in the logs. And feedback loops are worse: '
-              'a recommender trained on what it previously showed can narrow '
-              'the world it observes until it is only learning from itself.',
+              'Finally, deployment — where models go to quietly die. Two '
+              'things happen. Data drift: the inputs change distribution. '
+              'Maybe your customers started using the app differently, or the '
+              'camera on the new iPhone captures images your model never '
+              'trained on. Concept drift: the relationship between inputs and '
+              'labels changes. What counted as spam in 2019 is not what counts '
+              'as spam today. Both silently degrade a frozen model with zero '
+              'code changes and zero visible errors. And feedback loops are '
+              'worse: a recommendation system trained on what it previously '
+              'showed narrows the world it observes until it is only learning '
+              'from its own past decisions. You have to monitor, retrain, and '
+              'never assume yesterday\'s accuracy survives today.',
           startMs: 752000,
           endMs: 822000,
         ),
@@ -928,10 +1023,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd12',
           speaker: 'Guest',
           text:
-              'So the summary: assume a stable distribution, search a '
-              'hypothesis family for a good fit, keep an honest holdout, read '
-              'the gap between training and validation error, and monitor '
-              'production as if the distribution will move — because it will.',
+              'So, the summary to carry forward. Assume your data comes from '
+              'a stable hidden pattern — and verify that assumption regularly. '
+              'Search a hypothesis family for a member that fits your examples '
+              'well. Keep an honest holdout that nobody touches until the end. '
+              'Read the gap between training and validation error — it is your '
+              'diagnostic, not a number to hide. And monitor production as if '
+              'the world will shift under you, because it absolutely will.',
           startMs: 822000,
           endMs: 846000,
         ),

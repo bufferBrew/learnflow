@@ -1,5 +1,6 @@
 import '../../models/content_block.dart';
 import '../../models/exercise.dart';
+import '../../models/game.dart';
 import '../../models/lesson.dart';
 import '../../models/podcast.dart';
 import '../../models/review.dart';
@@ -17,6 +18,7 @@ const Lesson collectionsLesson = Lesson(
   read: _read,
   practice: _practice,
   podcast: _podcast,
+  play: _play,
   review: _review,
   sources: _sources,
 );
@@ -506,6 +508,94 @@ print(list(dict.fromkeys(["b", "a", "b", "c", "a"])))   # ['b', 'a', 'c']
   ],
 );
 
+const GameContent _play = GameContent(
+  games: [
+    FillBlankGame(
+      id: 'game-collections-comprehension',
+      title: 'Filter with a comprehension',
+      instructions: 'Type the missing keyword.',
+      code: '''
+words = ["Ada", "grace", "ALAN"]
+short = [w for w in words ______ len(w) <= 4]
+print(short)
+''',
+      blanks: [Blank(answer: 'if', hint: 'comprehension keyword')],
+    ),
+    BugHuntGame(
+      id: 'game-collections-sort-none',
+      title: 'Find the None',
+      instructions: 'Tap the line that binds best to the wrong thing.',
+      code: '''
+scores = [90, 85, 77]
+best = scores.sort()
+print(best)
+''',
+      buggyLine: 2,
+      explanation:
+          'sort() mutates the list in place and returns None, like every '
+          'method that mutates. best ends up bound to None instead of a '
+          'sorted list — use sorted(scores) when you want a value back.',
+      fixedCode: '''
+scores = [90, 85, 77]
+best = sorted(scores)
+print(best)   # [77, 85, 90]
+''',
+    ),
+    OutputPredictorGame(
+      id: 'game-collections-slice-output',
+      title: 'What does this print?',
+      instructions: 'Pick what the slice expression prints.',
+      code: '''
+scores = [90, 85, 77, 61, 100]
+print(scores[::-1][:2])
+''',
+      options: ['[90, 85]', '[100, 61]', '[100, 90]', '[61, 100]'],
+      correctIndex: 1,
+      explanation:
+          'scores[::-1] reverses the list to [100, 61, 77, 85, 90]; slicing '
+          'that reversed copy with [:2] keeps its first two elements.',
+    ),
+    SyntaxScrambleGame(
+      id: 'game-collections-scramble',
+      title: 'Rebuild the dict comprehension',
+      instructions: 'Drag or use the arrows to put these lines back in order.',
+      lines: [
+        'def word_lengths(words):',
+        '    lengths = {w: len(w) for w in words}',
+        '    return lengths',
+        'print(word_lengths(["Ada", "grace"]))',
+      ],
+    ),
+    TermMatchGame(
+      id: 'game-collections-terms',
+      title: 'Match the vocabulary',
+      instructions: 'Tap a term, then tap its definition.',
+      pairs: [
+        TermPair(
+          term: 'Hashable',
+          definition: 'Has a stable hash, so it can be a dict key or set member.',
+        ),
+        TermPair(
+          term: 'View object',
+          definition: 'A live window onto a dict, returned by keys/values/items.',
+        ),
+        TermPair(
+          term: 'Generator expression',
+          definition: 'A comprehension in parentheses that yields values lazily.',
+        ),
+        TermPair(
+          term: 'defaultdict',
+          definition: 'A dict that creates a missing value with a factory function.',
+        ),
+        TermPair(
+          term: 'Shallow copy',
+          definition: 'A copy whose container is new but the items inside are shared.',
+        ),
+      ],
+    ),
+  ],
+);
+
 const PodcastScript _podcast = PodcastScript(
   variants: {
     PodcastVariant.concise: ScriptVariant(
@@ -516,11 +606,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c1',
           speaker: 'Host',
           text:
-              'Containers, condensed. Four built-ins do almost everything: '
-              'list for an ordered mutable sequence, tuple for a fixed record, '
-              'dict for key-to-value lookup, and set for membership and '
-              'uniqueness. Picking the right one is most of the performance '
-              'work you will ever do in Python.',
+              'Containers, condensed. Four built-ins handle almost everything: '
+              'list for an ordered sequence you can shuffle, tuple for a fixed record that won\'t budge, '
+              'dict for instant key-to-value lookup, and set for "is this in there?" and keeping things unique. '
+              'Honestly, picking the right container is 80% of the performance work '
+              'you\'ll ever do in Python — it\'s like choosing the right kitchen tool.',
           startMs: 0,
           endMs: 44000,
         ),
@@ -528,11 +618,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c2',
           speaker: 'Guest',
           text:
-              'The rule of thumb is about the question you are asking. If you '
-              'ask "is this in there" repeatedly, you want a set or a dict, '
-              'because that is a hash lookup instead of a scan. If you ask '
-              '"what is at position three", you want a list. If the positions '
-              'have distinct meanings, you want a tuple.',
+              'Here\'s the rule of thumb: pick your container based on what question you keep asking. '
+              'If you\'re constantly asking "is this in the collection?" — you want a set or dict, '
+              'because hash lookups are instant, like flipping straight to a page in an index. '
+              'If you\'re asking "what\'s at position three?" — a list is your friend. '
+              'If the positions mean different things — like latitude and longitude — reach for a tuple.',
           startMs: 44000,
           endMs: 94000,
         ),
@@ -540,11 +630,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c3',
           speaker: 'Host',
           text:
-              'Dictionaries have kept insertion order since 3.7, and that is a '
-              'language guarantee now, not an accident. Use get when a missing '
-              'key is normal, plain square brackets when a missing key is a '
-              'bug, and remember that keys must be hashable — which in practice '
-              'means immutable.',
+              'Quick dict tip: they\'ve kept insertion order since Python 3.7, and it\'s a guarantee now, not luck. '
+              'Use .get() when a missing key is totally normal — like checking if someone\'s in the phone book. '
+              'Use square brackets when a missing key means something is genuinely broken. '
+              'And remember: keys must be hashable, which in practice just means immutable. '
+              'That\'s why "hello" and (1, 2) can be keys, but [1, 2] cannot.',
           startMs: 94000,
           endMs: 138000,
         ),
@@ -552,11 +642,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c4',
           speaker: 'Guest',
           text:
-              'Comprehensions are the idiomatic way to derive one collection '
-              'from another. List, set and dict forms all exist, and dropping '
-              'the brackets inside a function call gives you a lazy generator '
-              'expression instead. Keep them to one for and one if — past that, '
-              'write the loop.',
+              'Comprehensions are Python\'s way of saying "build me a new collection from this one" in one clean line. '
+              'List, set, and dict forms all exist, following the same pattern. '
+              'Drop the brackets inside a function call like sum() and you get a lazy generator expression '
+              'that never creates the whole list in memory. Just keep them simple: one for, one if max. '
+              'Past that, write a regular loop — future you will thank present you.',
           startMs: 138000,
           endMs: 182000,
         ),
@@ -564,10 +654,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c5',
           speaker: 'Host',
           text:
-              'And learn the collections module: Counter for tallies, '
-              'defaultdict for grouping, deque for queues and bounded history, '
-              'namedtuple for readable records. Each replaces about five lines '
-              'of bookkeeping you would otherwise write by hand.',
+              'And don\'t sleep on the collections module — it\'s full of specialized tools. '
+              'Counter for tallying things up, like counting votes or word frequencies. '
+              'defaultdict for grouping — no more "if key not in dict, create empty list" boilerplate. '
+              'deque for fast queues and sliding windows. namedtuple for records with named fields. '
+              'Each one replaces about five lines of manual bookkeeping you\'d otherwise write by hand.',
           startMs: 182000,
           endMs: 216000,
         ),
@@ -581,10 +672,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 's1',
           speaker: 'Host',
           text:
-              'This episode is about containers — and really about choosing '
-              'between them. Most Python performance problems I have seen were '
-              'not about the language being slow; they were a list being used '
-              'where a set belonged, or a string being rebuilt in a loop.',
+              'This episode is about containers — and honestly, about making choices. '
+              'Most Python performance problems I\'ve seen weren\'t the language being slow. '
+              'They were using a list where a set belonged — like searching a phone book '
+              'page by page instead of using the index. Or rebuilding a string in a loop '
+              'like repainting the same wall every time you add a single brushstroke.',
           startMs: 0,
           endMs: 50000,
         ),
@@ -592,11 +684,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 's2',
           speaker: 'Guest',
           text:
-              'Lists first. Ordered, mutable, indexable, and backed by an '
-              'over-allocated array. Appending is amortised constant time, '
-              'which is why append-in-a-loop is fine. Inserting or deleting at '
-              'the front is linear because everything after it shifts, so if '
-              'you are doing that repeatedly you want a deque instead.',
+              'Let\'s start with lists. They\'re ordered, mutable, indexable — your general-purpose workhorse. '
+              'Under the hood, it\'s a slightly-over-allocated array, so appending is cheap on average. '
+              'That\'s why building a list in a loop with .append() is totally fine. '
+              'But inserting or deleting at the front? Every single item behind it shifts — '
+              'like removing the first person from a line and everyone else scoots forward. '
+              'If you\'re doing that repeatedly, you want a deque — it\'s built for both ends.',
           startMs: 50000,
           endMs: 118000,
         ),
@@ -604,12 +697,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 's3',
           speaker: 'Host',
           text:
-              'Slicing is worth being precise about. Start is inclusive, stop '
-              'is exclusive, step can be negative, and the result is always a '
-              'new list. That last part means a slice of a big list copies the '
-              'references — cheap, but not free — and it is why '
-              'items-colon-colon-minus-one gives you a reversed copy rather '
-              'than reversing in place.',
+              'Slicing deserves a moment because it\'s both elegant and easy to misuse. '
+              'The formula is [start:stop:step] — start is inclusive, stop is exclusive, step can go backwards. '
+              'Critical detail: slicing always produces a NEW list. It copies the references, not the objects — '
+              'cheap, but not free on a million-item list. That\'s why items[::-1] gives you a reversed copy, '
+              'not an in-place reversal. If you just want to walk backwards, use reversed() — no copy needed.',
           startMs: 118000,
           endMs: 184000,
         ),
@@ -617,11 +709,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 's4',
           speaker: 'Guest',
           text:
-              'Dicts are the workhorse, and there are three access idioms. '
-              'Square brackets when a missing key is genuinely a bug — let it '
-              'raise KeyError. get with a default when absence is normal. And '
-              'setdefault when you want to insert the default at the same time, '
-              'though defaultdict usually reads better for that.',
+              'Dicts are the true workhorse, and there are three access patterns worth knowing cold. '
+              'Square brackets: use when a missing key means something is genuinely broken — let it scream. '
+              '.get(key, default): use when absence is totally normal, like checking a settings dict. '
+              '.setdefault(): use when you want to insert the default AND get it in one shot — '
+              'though honestly, defaultdict from collections usually reads cleaner for that pattern.',
           startMs: 184000,
           endMs: 250000,
         ),
@@ -629,11 +721,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 's5',
           speaker: 'Host',
           text:
-              'Sets are the ones people under-use. Uniqueness, membership, and '
-              'the whole algebra: ampersand for intersection, pipe for union, '
-              'minus for difference, caret for symmetric difference. "Which '
-              'users are in both groups" is one operator, and it is fast '
-              'because both sides are hashed.',
+              'Sets are the unsung heroes that people don\'t reach for enough. '
+              'Unique items, lightning-fast membership tests, and a whole algebra built right in: '
+              '& for intersection ("in both"), | for union ("in either"), '
+              '- for difference ("in first but not second"), ^ for symmetric difference ("in one or the other but not both"). '
+              '"Which users are in both groups?" becomes a single & operator. '
+              'And it\'s fast — both sides are hashed, so no scanning required.',
           startMs: 250000,
           endMs: 308000,
         ),
@@ -641,11 +734,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 's6',
           speaker: 'Guest',
           text:
-              'Tuples are for fixed-shape records: a coordinate, a row, the two '
-              'things a function returns. They are immutable, so they are '
-              'hashable, so they can be dict keys — which is how you build a '
-              'lookup table indexed by a pair. Lists are for a variable number '
-              'of interchangeable items.',
+              'Tuples are for fixed-shape records where each position means something specific: '
+              'a latitude-longitude pair, a database row, the three things a function returns. '
+              'Since they\'re immutable, they\'re hashable — so they can be dict keys. '
+              'That\'s how you build a lookup table indexed by a pair, like a grid or a coordinate system. '
+              'Lists are for a variable number of interchangeable items — a shopping cart, not a coordinate.',
           startMs: 308000,
           endMs: 368000,
         ),
@@ -653,11 +746,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 's7',
           speaker: 'Host',
           text:
-              'Comprehensions tie it together. A comprehension says "this new '
-              'collection is derived from that one" in a single expression, and '
-              'the list, set and dict forms all follow the same shape. Drop the '
-              'brackets inside a call like sum or any and you get a generator '
-              'expression that never materialises the intermediate list.',
+              'Comprehensions tie everything together beautifully. They say "build me a new collection from this one" '
+              'in a single, readable expression. List, set, and dict comprehensions all share the same shape: '
+              '[expr for item in source if condition]. Drop the brackets inside a function call like sum() '
+              'and you get a generator expression — it streams values one at a time without ever building '
+              'the whole list in memory. It\'s the difference between loading every page of a book or reading one at a time.',
           startMs: 368000,
           endMs: 434000,
         ),
@@ -665,11 +758,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 's8',
           speaker: 'Guest',
           text:
-              'Then the collections module. Counter for frequency, defaultdict '
-              'for grouping, deque for both-ends work and for maxlen-bounded '
-              'buffers, namedtuple when a tuple\'s positions deserve names. If '
-              'you find yourself writing "if key not in d: d of key equals '
-              'empty list", the standard library already has that.',
+              'Then there\'s the collections module — Python\'s Swiss Army knife drawer. '
+              'Counter for counting things: words in a document, votes in an election. '
+              'defaultdict for grouping: no more "if key not in dict, create empty list" dance. '
+              'deque for fast operations at both ends, plus maxlen for automatic sliding windows. '
+              'namedtuple when a tuple\'s positions deserve actual names. '
+              'If you ever catch yourself writing "if key not in d: d[key] = []", '
+              'remember: the standard library did that work for you already.',
           startMs: 434000,
           endMs: 498000,
         ),
@@ -683,10 +778,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd1',
           speaker: 'Host',
           text:
-              'Deep dive on Python\'s containers. We will do the memory layout '
-              'of a list, the hash table behind dicts and sets, what the '
-              'ordering guarantee actually promises, comprehension scoping, and '
-              'the complexity table you should carry around in your head.',
+              'Deep dive on Python\'s containers. We\'re going to pop the hood: '
+              'the memory layout of a list, the hash table machinery inside dicts and sets, '
+              'what the insertion-order guarantee actually means, comprehension scoping rules, '
+              'and the big-O cheat sheet you should tattoo on your brain. '
+              'Think of this as the mechanic\'s view — when something feels slow, you\'ll know exactly why.',
           startMs: 0,
           endMs: 62000,
         ),
@@ -694,13 +790,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd2',
           speaker: 'Guest',
           text:
-              'A CPython list is an array of pointers, not an array of values. '
-              'That is why it can hold mixed types, and why indexing is '
-              'constant time. When it fills up, it allocates a larger block — '
-              'growing by roughly an eighth each time — and copies the pointers '
-              'across. Any single append can therefore be expensive, but '
-              'averaged over many appends the cost per item is constant. That '
-              'is what amortised means.',
+              'A CPython list is an array of pointers — not an array of actual values. '
+              'That\'s the secret to how it holds mixed types: each slot just points to some object. '
+              'Indexing is instant because it\'s just pointer arithmetic. When the array fills up, '
+              'Python allocates a bigger one — growing by roughly 12% each time — and copies all the pointers over. '
+              'Any single append might trigger this resize, which is expensive. But spread across thousands of appends, '
+              'the average cost per item is constant. That\'s what "amortized O(1)" means: '
+              'like paying rent once a month but spreading the cost over 30 days.',
           startMs: 62000,
           endMs: 154000,
         ),
@@ -708,12 +804,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd3',
           speaker: 'Host',
           text:
-              'The corollary is the operations you should avoid at scale. '
-              'insert at zero and pop from zero are linear because every '
-              'remaining pointer shifts. In a loop that is quadratic. '
-              'collections.deque is implemented as a doubly linked list of '
-              'blocks, so appends and pops at both ends are constant time — at '
-              'the cost of indexing in the middle being linear.',
+              'Here\'s what to avoid at scale. insert(0, item) and pop(0) move every remaining pointer — '
+              'like asking everyone in a line to step back one spot. Do that in a loop and suddenly '
+              'your O(n) algorithm becomes O(n²) — a thousand items means a million pointer shifts. '
+              'collections.deque solves this: it\'s a doubly-linked list of blocks, so pushing and popping '
+              'at either end is always instant. The tradeoff? Indexing into the middle is linear. '
+              'No free lunch — pick the tool for your access pattern.',
           startMs: 154000,
           endMs: 238000,
         ),
@@ -721,12 +817,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd4',
           speaker: 'Guest',
           text:
-              'Now dicts. A dict is an open-addressed hash table. Hash the key, '
-              'take the low bits to choose a slot, and compare what is there — '
-              'identity first as a fast path, then equality. If it does not '
-              'match, probe another slot using a sequence derived from the '
-              'remaining hash bits. When the table is about two-thirds full it '
-              'grows and everything is rehashed.',
+              'Now let\'s walk through how a dict actually finds your value. It\'s an open-addressed hash table. '
+              'You hash the key, take the low bits to pick a slot, and look at what\'s there. '
+              'First it checks identity — "is this the exact same object?" — as a fast path. Then equality. '
+              'If it\'s not a match, it probes the next slot using a deterministic sequence from the remaining hash bits. '
+              'When the table hits about two-thirds full, it doubles in size and rehashes everything — '
+              'like a restaurant expanding and reassigning every table number.',
           startMs: 238000,
           endMs: 326000,
         ),
@@ -734,12 +830,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd5',
           speaker: 'Host',
           text:
-              'Since 3.6 the layout is split in two: a dense array of entries '
-              'in insertion order, plus a sparse array of indexes into it. That '
-              'saved a lot of memory, and it made iteration follow insertion '
-              'order as a side effect. In 3.7 that side effect was promoted to '
-              'a language guarantee — so you may now rely on it, and Counter '
-              'and defaultdict inherit it too.',
+              'Since Python 3.6, the dict layout has been split into two arrays: '
+              'a dense array of entries in insertion order, and a sparse index array pointing into it. '
+              'This saved significant memory and, as a happy side effect, made iteration follow insertion order. '
+              'In 3.7 that side effect became a guarantee — you can count on dicts preserving insertion order. '
+              'And since Counter and defaultdict are dict subclasses, they inherit this behavior for free.',
           startMs: 326000,
           endMs: 412000,
         ),
@@ -747,13 +842,13 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd6',
           speaker: 'Guest',
           text:
-              'The hashing contract has real consequences for your own classes. '
-              'Objects that compare equal must hash equal, otherwise a set will '
-              'happily hold two things you consider identical. And a hash must '
-              'not change while the object is in a container, which is exactly '
-              'why lists and dicts are unhashable. Define dunder eq on a class '
-              'and Python sets dunder hash to None, making instances '
-              'unhashable, unless you define it yourself.',
+              'The hashing contract has teeth, especially for your own classes. Rule one: '
+              'if two objects compare equal, they MUST hash to the same value — otherwise a set will '
+              'happily hold two copies of what you consider the same thing. Rule two: '
+              'a hash must never change while the object lives inside a container — that\'s why lists and dicts '
+              'are unhashable. If you define __eq__ on a class, Python automatically sets __hash__ to None, '
+              'making instances unhashable unless you explicitly define a hash yourself. '
+              'It\'s Python\'s way of saying "I\'m not guessing — you tell me how to hash this.',
           startMs: 412000,
           endMs: 502000,
         ),
@@ -761,11 +856,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd7',
           speaker: 'Host',
           text:
-              'Sets use the same machinery with no value alongside the key. '
-              'That is why set membership and dict key membership have the same '
-              'cost, and why converting a list to a set before a batch of '
-              'membership tests is such a reliable win — it turns an '
-              'n-times-m scan into n-plus-m hashing.',
+              'Sets use exactly the same hash table machinery as dicts — just without a value next to each key. '
+              'So set membership is exactly as fast as dict key lookup. This is why converting a list to a set '
+              'before doing a bunch of membership tests is such an enormous win. '
+              'Checking "is X in list" N times against a list of M items is O(N×M) — scanning the list every time. '
+              'Build a set from the list once: O(M). Check N items: O(N). Total: O(N+M). '
+              'It\'s like building an index once instead of re-reading the book for every question.',
           startMs: 502000,
           endMs: 570000,
         ),
@@ -773,12 +869,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd8',
           speaker: 'Guest',
           text:
-              'Comprehensions deserve a note on scoping. In Python 3 a '
-              'comprehension runs in its own scope, so the loop variable does '
-              'not leak into the surrounding function — that changed from '
-              'Python 2. It also means a comprehension can read enclosing '
-              'variables but its iteration variable is entirely its own, which '
-              'is what makes them safe to nest.',
+              'Comprehensions have their own scope — a detail that matters more than you\'d think. '
+              'In Python 3, the loop variable inside a comprehension stays inside — it doesn\'t leak out '
+              'and pollute your surrounding function. This changed from Python 2, where it was a common footgun. '
+              'The comprehension can read variables from outside, but its own iteration variable is completely contained. '
+              'That\'s what makes nested comprehensions safe: each one has its own little bubble.',
           startMs: 570000,
           endMs: 648000,
         ),
@@ -786,12 +881,12 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd9',
           speaker: 'Host',
           text:
-              'And a word on copies, because it catches everyone. list of x, '
-              'x-colon and x dot copy are all shallow: you get a new outer list '
-              'holding the same inner objects. Copy a list of dicts that way '
-              'and mutating one of those dicts is still visible through both '
-              'lists. copy.deepcopy walks the whole structure, which is correct '
-              'and can be very slow.',
+              'A word on copies, because this catches literally everyone. list(x), x[:], and x.copy() '
+              'are ALL shallow copies: you get a new outer container, but it holds the same inner objects. '
+              'It\'s like photocopying a table of contents — the page numbers are new, but they point to the same chapters. '
+              'Copy a list of dicts this way, and mutating a dict is visible through both copies. '
+              'copy.deepcopy walks the entire nested structure and duplicates everything — correct, but potentially very slow. '
+              'Be intentional about which one you need.',
           startMs: 648000,
           endMs: 726000,
         ),
@@ -799,11 +894,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd10',
           speaker: 'Guest',
           text:
-              'On the standard library, two more worth knowing beyond the usual '
-              'four. heapq turns a list into a priority queue with push and pop '
-              'in log n — that is your "smallest n items" and scheduling tool. '
-              'bisect keeps a sorted list sorted with binary insertion, which '
-              'beats re-sorting after every insert.',
+              'Two more standard library gems beyond the usual four. heapq turns a plain list into a priority queue: '
+              'push and pop in O(log n). This is your tool for "give me the top 10 items" or any kind of scheduling. '
+              'bisect keeps a sorted list sorted using binary search — O(log n) to find where to insert, '
+              'much better than re-sorting the whole list after every addition. '
+              'Together, these two solve a surprising number of real-world problems elegantly.',
           startMs: 726000,
           endMs: 794000,
         ),
@@ -811,12 +906,11 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd11',
           speaker: 'Host',
           text:
-              'The summary to carry: list indexing and append are constant, '
-              'front insertion is linear; dict and set lookup is constant on '
-              'average and requires hashable keys; dicts keep insertion order; '
-              'tuples are records; comprehensions derive collections; and the '
-              'collections module already wrote the bookkeeping you were about '
-              'to write.',
+              'Here\'s the cheat sheet to carry with you. List indexing and append: O(1). Front insert: O(n). '
+              'Dict and set lookup: O(1) average, keys must be hashable. Dicts preserve insertion order — guaranteed since 3.7. '
+              'Tuples are for records, lists for sequences. Comprehensions derive collections cleanly. '
+              'And the collections module already wrote all the boilerplate you were about to write — '
+              'Counter, defaultdict, deque, namedtuple. Reach for them before you reach for raw loops.',
           startMs: 794000,
           endMs: 846000,
         ),

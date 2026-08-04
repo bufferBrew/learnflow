@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'state/bookmark_provider.dart';
+import 'state/game_play_provider.dart';
 import 'state/lesson_library.dart';
 import 'state/podcast_playback_provider.dart';
 import 'state/progress_provider.dart';
@@ -38,6 +39,7 @@ class LearnFlowApp extends StatelessWidget {
           create: (_) => RecentlyViewedProvider(),
         ),
         ChangeNotifierProvider<ResumeProvider>(create: (_) => ResumeProvider()),
+        ChangeNotifierProvider<GamePlayProvider>(create: (_) => GamePlayProvider()),
         ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
       ],
       child: Consumer<ThemeProvider>(

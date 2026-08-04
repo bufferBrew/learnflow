@@ -8,14 +8,15 @@ import '../state/resume_provider.dart';
 import '../theme/design_tokens.dart';
 import '../widgets/icon_mapping.dart';
 import 'listen_mode_screen.dart';
+import 'play_mode_screen.dart';
 import 'practice_mode_screen.dart';
 import 'read_mode_screen.dart';
 import 'review_mode_screen.dart';
 
-/// One lesson, with the four [LessonMode] panes behind a tab switcher.
+/// One lesson, with the five [LessonMode] panes behind a tab switcher.
 ///
-/// All four are built: [ReadModeScreen], [PracticeModeScreen],
-/// [ListenModeScreen] and [ReviewModeScreen].
+/// All five are built: [ReadModeScreen], [PracticeModeScreen],
+/// [ListenModeScreen], [ReviewModeScreen] and [PlayModeScreen].
 class LessonDetailScreen extends StatefulWidget {
   const LessonDetailScreen({
     super.key,
@@ -108,6 +109,10 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
                   moduleTitle: widget.moduleTitle,
                 ),
                 LessonMode.listen => ListenModeScreen(
+                  lesson: lesson,
+                  moduleTitle: widget.moduleTitle,
+                ),
+                LessonMode.play => PlayModeScreen(
                   lesson: lesson,
                   moduleTitle: widget.moduleTitle,
                 ),

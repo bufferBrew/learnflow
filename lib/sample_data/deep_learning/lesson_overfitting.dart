@@ -1,5 +1,6 @@
 import '../../models/content_block.dart';
 import '../../models/exercise.dart';
+import '../../models/game.dart';
 import '../../models/lesson.dart';
 import '../../models/podcast.dart';
 import '../../models/review.dart';
@@ -18,6 +19,7 @@ const Lesson overfittingLesson = Lesson(
   read: _read,
   practice: _practice,
   podcast: _podcast,
+  play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
 );
@@ -727,11 +729,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c1',
           speaker: 'Host',
           text:
-              'Overfitting in one sentence: your training loss keeps falling '
-              'while your validation loss flattens out and then starts rising. '
-              'At that turning point the network stopped learning patterns and '
-              'started memorising examples, noise and all. Plot both curves '
-              'every run — training loss alone tells you nothing.',
+              'Overfitting in one sentence: you are studying for a history '
+              'exam but instead of understanding the events, you memorise the '
+              'exact wording of every practice question. Come exam day, the '
+              'questions are slightly different and you are lost. Your '
+              'training loss — how well you did on the practice test — kept '
+              'improving, but your validation loss — how well you do on new '
+              'questions — flattened and then got worse. Plot both curves '
+              'together every single run. Training loss alone is like a '
+              'student telling you their practice score while hiding their '
+              'exam grade.',
           startMs: 0,
           endMs: 44000,
         ),
@@ -739,12 +746,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c2',
           speaker: 'Guest',
           text:
-              'First tool: dropout. During training you randomly zero a '
-              'fraction of the activations in a layer, a different random set '
-              'each pass. No unit can rely on any other unit being there, so '
-              'you break up those over-specific co-adapted feature detectors. '
-              'At inference it turns off, and PyTorch handles the rescaling '
-              'for you.',
+              'First tool: dropout. Imagine a basketball team where during '
+              'practice, the coach randomly benches half the players every '
+              'drill. No single player can rely on any teammate always being '
+              'there. Everyone has to be independently useful. That is exactly '
+              'what dropout does — randomly zeroes out neurons during training '
+              'so they cannot form fragile little conspiracies that only work '
+              'when the exact right partners are present. At game time — '
+              'inference — the full team plays.',
           startMs: 44000,
           endMs: 88000,
         ),
@@ -752,12 +761,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c3',
           speaker: 'Host',
           text:
-              'Second: weight decay, also called L2 regularisation. You '
-              'penalise large weights, which biases the network towards '
-              'smoother functions. In PyTorch it is one keyword on the '
-              'optimiser — and for Adam you want AdamW, which applies the '
-              'decay properly rather than routing it through the adaptive '
-              'gradient machinery.',
+              'Second: weight decay. Think of it like a tax on having strong '
+              'opinions. Every training step, the optimizer nudges every '
+              'weight slightly towards zero. A weight that genuinely matters '
+              'for prediction earns its keep by reducing error enough to '
+              'offset the tax. A weight that only exists to fit one weird '
+              'outlier cannot pay for itself and shrinks away. In PyTorch it '
+              'is one keyword argument — and for Adam you want AdamW, which '
+              'applies the tax properly rather than distorting it through the '
+              'adaptive gradient machinery.',
           startMs: 88000,
           endMs: 134000,
         ),
@@ -765,12 +777,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c4',
           speaker: 'Guest',
           text:
-              'Third: early stopping. Instead of training for a fixed number '
-              'of epochs, watch validation loss, keep a snapshot of the best '
-              'weights, and stop when it has failed to improve for a set '
-              'patience number of epochs. Then restore that snapshot — '
-              'stopping without restoring only limits how far past the optimum '
-              'you drift.',
+              'Third: early stopping. Instead of deciding "I will train for '
+              'exactly 100 epochs" ahead of time, you watch the validation '
+              'score and stop when it stops improving. But here is the part '
+              'people skip: by the time you notice the score has been getting '
+              'worse for a while, you are several epochs past the best model. '
+              'Save a copy of the weights every time you hit a new best. When '
+              'you stop, restore that copy — not the final weights. Stopping '
+              'without restoring only limits how far past the optimum you '
+              'drift.',
           startMs: 134000,
           endMs: 180000,
         ),
@@ -778,11 +793,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'c5',
           speaker: 'Host',
           text:
-              'Fourth: data augmentation. Random crops, flips, colour jitter — '
-              'label-preserving transformations that give the network more '
-              'variation than your raw dataset contains. That one regularises '
-              'the data rather than the model. All four stack, and the one '
-              'that beats all of them is more real data, when you can get it.',
+              'Fourth: data augmentation — the odd one out because it changes '
+              'the training data instead of the model. When teaching someone '
+              'to recognise cats, show them the same cat from different '
+              'angles, slightly cropped, under different lighting. Each view '
+              'is a new training example that costs nothing to create. Random '
+              'crops, flips, colour adjustments. All four tools stack '
+              'together. And the one that beats all of them combined? More '
+              'real labelled data, when you can get it.',
           startMs: 180000,
           endMs: 224000,
         ),
@@ -796,11 +814,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 's1',
           speaker: 'Host',
           text:
-              'Last time we got a network training. Today: why a network that '
-              'trains beautifully can still be useless. Gradient descent '
-              'minimises loss on the training set, and that is all it does. '
-              'Nothing in the algorithm asks for performance on data it has '
-              'not seen. That part is entirely on you.',
+              'Last time we got a network training. Today: why a beautifully '
+              'training network can still be useless. Gradient descent is like '
+              'a chef who keeps tasting and adjusting the same dish over and '
+              'over until it is perfect — for that one dish. Hand the chef '
+              'a completely different set of ingredients and suddenly all that '
+              'fine-tuning might be irrelevant. Nothing in the algorithm asks '
+              '"will this work on new data?" That question is entirely yours '
+              'to answer.',
           startMs: 0,
           endMs: 52000,
         ),
@@ -808,13 +829,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 's2',
           speaker: 'Guest',
           text:
-              'And a big network has more than enough capacity to just '
-              'memorise. Modern architectures can fit randomly shuffled labels '
-              'to near-zero training loss — there is a famous experiment '
-              'showing exactly that. So the fact that your loss went down is '
-              'not evidence of learning anything. The diagnostic is two curves '
-              'on one axis: training loss falling, validation loss flattening '
-              'and then turning upward.',
+              'And modern networks have staggering memorisation capacity. '
+              'There is a famous experiment from 2017 where researchers took '
+              'the CIFAR-10 image dataset — cats, dogs, trucks, planes — and '
+              'randomly shuffled all the labels. The network still drove '
+              'training loss to near zero. It memorised which random label '
+              'went with which image, perfectly. So the fact that your loss '
+              'curves are going down proves exactly nothing about whether '
+              'you have learned anything useful. The diagnostic is two curves: '
+              'training loss still falling while validation loss flattens and '
+              'then turns back up.',
           startMs: 52000,
           endMs: 116000,
         ),
@@ -822,11 +846,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 's3',
           speaker: 'Host',
           text:
-              'Worth naming the opposite failure too, because people reach for '
-              'the wrong fix. Underfitting looks like both curves plateauing '
-              'high and close together — the network is not capable enough or '
-              'has not trained long enough. That wants more capacity. '
-              'Overfitting wants less. Read the curves before you pick.',
+              'Worth naming the opposite failure because the remedy is '
+              'completely different and people mix them up constantly. '
+              'Underfitting: both curves are plateaued high and hugging each '
+              'other — like a student who has not studied enough to pass '
+              'either the homework or the exam. That needs more capacity, '
+              'more training, a better learning rate. Overfitting needs less '
+              'capacity, or more regularisation. The two prescriptions are '
+              'opposites. Read the curves before you reach for a fix.',
           startMs: 116000,
           endMs: 180000,
         ),
@@ -834,12 +861,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 's4',
           speaker: 'Guest',
           text:
-              'Right, so tool one, dropout. Every forward pass you zero out a '
-              'random fraction of a layer\'s activations — fifty percent is '
-              'the classic setting for a fully connected layer. A different '
-              'subnetwork trains each pass, so the units cannot form fragile '
-              'committees where a feature only works when four specific '
-              'partners all agree. Each one has to be independently useful.',
+              'Tool one: dropout. Every forward pass, randomly delete half '
+              'the neurons in a layer. A different random half each time. '
+              'Imagine a heist movie where the crew keeps changing — you '
+              'cannot build a plan that only works if exactly Dave, Susan, '
+              'and Mike are all present. Everyone has to bring something '
+              'independently valuable. That breaks co-adaptation, where groups '
+              'of neurons form brittle little pacts that only fire together '
+              'on specific training examples.',
           startMs: 180000,
           endMs: 246000,
         ),
@@ -847,13 +876,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's5',
           speaker: 'Host',
           text:
-              'And the practical trap: model dot train and model dot eval. '
-              'Dropout must be off at inference. PyTorch scales the surviving '
-              'activations by one over one minus p during training so the '
-              'expected magnitudes match and eval needs no compensation — but '
-              'only if you actually flip the mode. Leaving a model in train '
-              'mode during evaluation is probably the single most common bug '
-              'in this whole area.',
+              'And the practical trap: model.train() versus model.eval(). '
+              'Dropout must be off at inference — you want the full ensemble, '
+              'not random deletions. PyTorch handles the math: during training '
+              'it scales surviving activations up by 1/(1-p) so the expected '
+              'sum stays the same, and eval mode just runs a clean forward '
+              'pass. But if you forget to call model.eval() before evaluation, '
+              'your predictions become noisy, your validation score drops, and '
+              'you misdiagnose the problem as overfitting — the exact thing '
+              'you were trying to fix.',
           startMs: 246000,
           endMs: 312000,
         ),
@@ -861,14 +892,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 's6',
           speaker: 'Guest',
           text:
-              'Tool two, weight decay. Add a penalty on the squared magnitude '
-              'of the weights, and now every large weight has to justify '
-              'itself with reduced error. Large weights are what let a network '
-              'produce sharp responses that carve out individual training '
-              'points, so constraining them buys smoothness. One caveat: for '
-              'Adam, use AdamW. Naive L2 through the gradient gets distorted '
-              'by Adam\'s per-parameter scaling; AdamW decays the weight '
-              'directly.',
+              'Tool two: weight decay. Add a penalty on the squared magnitude '
+              'of every weight. This is like a tax on complexity — a weight '
+              'that genuinely helps reduce prediction error earns its keep; '
+              'a weight that only exists to fit one weird datapoint cannot '
+              'justify itself and shrinks to zero. Large weights are what let '
+              'a network draw sharp, wiggly decision boundaries that carve '
+              'out individual training points. Constraining them buys '
+              'smoothness. One caveat: for Adam, use AdamW. Naive L2 through '
+              'the Adam gradient machinery gets distorted by per-parameter '
+              'adaptive scaling; AdamW decays the weight directly.',
           startMs: 312000,
           endMs: 378000,
         ),
@@ -876,12 +909,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's7',
           speaker: 'Host',
           text:
-              'Tool three, early stopping, which is almost free. Track the '
-              'best validation loss, keep a patience counter, reset it on any '
-              'genuine improvement and increment it otherwise. When patience '
-              'runs out, stop. And save the best state dict as you go, because '
-              'by the time you stop you are several epochs past the good one. '
-              'Restoring the snapshot is what makes it worth doing.',
+              'Tool three: early stopping, which is almost free. Keep a '
+              'running best validation loss and a patience counter. Every '
+              'epoch that beats the best resets the counter and saves a '
+              'checkpoint. Every epoch that does not, increment the counter. '
+              'When the counter hits the patience threshold, stop and restore '
+              'the saved checkpoint. People skip the restore step — by the '
+              'time patience runs out you are several epochs past the best '
+              'weights. Saving and reloading the best state dict is what '
+              'makes early stopping actually deliver the best model.',
           startMs: 378000,
           endMs: 440000,
         ),
@@ -889,12 +925,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 's8',
           speaker: 'Guest',
           text:
-              'Tool four, augmentation, and it is the odd one out — it changes '
-              'the data instead of the model. Random resized crops, horizontal '
-              'flips, colour jitter, all through torchvision transforms, on '
-              'the training pipeline only. Never on validation or test, or '
-              'your score becomes a lottery. And these four are complementary, '
-              'not competing: real image pipelines run all of them at once.',
+              'Tool four: augmentation, and it is different in kind — it '
+              'regularises the data, not the model. Random resized crops, '
+              'horizontal flips, colour jitter — all applied in the training '
+              'pipeline only, never on validation or test. You are telling '
+              'the model: "a cat is still a cat even if I zoom in, flip it '
+              'left to right, and change the lighting". That is powerful '
+              'domain knowledge encoded as data transforms. And these four '
+              'tools are complementary, not alternatives — modern image '
+              'pipelines routinely use all of them at once.',
           startMs: 440000,
           endMs: 496000,
         ),
@@ -908,12 +947,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd1',
           speaker: 'Host',
           text:
-              'Long form on generalisation. The plan: what overfitting '
-              'actually is and how to see it, dropout and the co-adaptation '
-              'story it came from, weight decay and the surprisingly subtle '
-              'business of what decay means for an adaptive optimiser, early '
-              'stopping done properly, augmentation, and then how to combine '
-              'the lot without fooling yourself.',
+              'Deep dive on generalisation. Imagine teaching someone to bake '
+              'bread using only the loaves from your own kitchen. They master '
+              'your oven, your flour brand, your humidity. Send them to a '
+              'different kitchen and suddenly the bread is terrible. That is '
+              'overfitting — the model learned your specific kitchen, not '
+              'bread. We are going to walk through what overfitting actually '
+              'is, the four standard fixes, and how to combine them without '
+              'fooling yourself.',
           startMs: 0,
           endMs: 66000,
         ),
@@ -922,12 +963,14 @@ const PodcastScript _podcast = PodcastScript(
           speaker: 'Guest',
           text:
               'Start with the framing. Training is empirical risk '
-              'minimisation: you minimise average loss over a finite sample '
-              'and hope it stands in for the loss over the real distribution. '
-              'Overfitting is that hope failing. The sample carries structure '
-              'that generalises and idiosyncrasy that does not, and a '
-              'sufficiently flexible model has no way to tell them apart. It '
-              'fits both, because both reduce the training loss.',
+              'minimisation — you minimize average loss over a finite sample '
+              'and cross your fingers that this mimics the loss over the real '
+              'distribution. Overfitting is that hope failing. Your training '
+              'sample carries both genuine structure that generalises and '
+              'quirky idiosyncrasies that do not. A sufficiently flexible '
+              'model cannot tell them apart. Reducing the loss rewards both '
+              'equally, so the model happily fits the noise alongside the '
+              'signal.',
           startMs: 66000,
           endMs: 140000,
         ),
@@ -935,13 +978,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd3',
           speaker: 'Host',
           text:
-              'The diagnostic is unglamorous and non-negotiable: plot training '
-              'and validation loss per epoch. Training loss keeps descending, '
-              'validation bottoms out and turns. The turning epoch is where '
-              'the marginal thing being learned stopped being signal. And note '
-              'the gap itself is not the alarm — a gap is normal, since one '
-              'set was optimised on and the other was not. The direction of '
-              'the validation curve is the alarm.',
+              'The diagnostic is unglamorous and non-negotiable: plot two '
+              'curves on one axis. Training loss keeps descending — the '
+              'optimizer is doing its job. Validation loss bottoms out and '
+              'turns back up. That turning point is the exact epoch where the '
+              'marginal thing being learned stopped being real signal and '
+              'became noise specific to the training rows. And note: a gap '
+              'between the curves is normal — you optimized on one set and '
+              'not the other. The direction of the validation curve is the '
+              'alarm, not the gap itself.',
           startMs: 140000,
           endMs: 214000,
         ),
@@ -949,12 +994,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd4',
           speaker: 'Guest',
           text:
-              'Contrast that with underfitting, where both curves plateau high '
-              'and hug each other. Same-looking chart at a glance, opposite '
-              'remedy: more parameters, more epochs, a better learning rate. '
-              'Reaching for dropout on an underfit network makes it strictly '
-              'worse, and people do this constantly because regularisation '
-              'feels like the responsible thing to do.',
+              'Contrast with underfitting: both curves plateau high and hug '
+              'each other. Same-looking chart at a glance, opposite disease. '
+              'More capacity, more epochs, a better learning rate. Reaching '
+              'for dropout on an underfit network makes it strictly worse, '
+              'and people do this constantly because regularisation feels '
+              'like the responsible thing. But regularisation reduces '
+              'effective capacity — it is a cure for having too much, and '
+              'poison for having too little.',
           startMs: 214000,
           endMs: 288000,
         ),
@@ -962,14 +1009,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd5',
           speaker: 'Host',
           text:
-              'On to dropout. The original 2012 paper by Hinton and colleagues '
-              'is titled "Improving neural networks by preventing '
+              'On to dropout. The original 2012 paper by Hinton and '
+              'colleagues is titled "Improving neural networks by preventing '
               'co-adaptation of feature detectors", and that title is the '
-              'entire mechanism. Units conspire: a detector emerges that works '
-              'only because three particular other units behave a particular '
-              'way. That conspiracy is brittle and heavily tuned to the '
-              'training set. Randomly deleting units at every pass makes such '
-              'arrangements unsustainable.',
+              'entire mechanism. Neurons conspire: a detector emerges that '
+              'works only because three particular other neurons behave a '
+              'particular way on training examples. That conspiracy is '
+              'brittle — it breaks the moment those partners are missing, '
+              'which on real data they often are. Randomly deleting units at '
+              'every forward pass makes such fragile arrangements '
+              'mathematically unsustainable.',
           startMs: 288000,
           endMs: 360000,
         ),
@@ -977,14 +1026,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd6',
           speaker: 'Guest',
           text:
-              'The other reading is ensembling. Each forward pass trains a '
-              'different thinned subnetwork sampled from shared weights, and '
-              'at test time the full network approximates an average over that '
-              'exponentially large family. Ensembles generalise better than '
-              'their members, and here you get one at essentially no cost. '
-              'Practically: point five in dense classifier heads, much lower '
-              'or absent in convolutional stacks, and modern transformer code '
-              'often prefers point one with heavy augmentation instead.',
+              'The other reading is implicit ensembling. Each forward pass '
+              'trains a different randomly-thinned subnetwork drawn from '
+              'shared weights. At test time, the full network approximates '
+              'a weighted average over that exponentially large family of '
+              'thinner networks. Ensembles almost always generalise better '
+              'than their individual members — and here you get one for free. '
+              'Practically: p=0.5 in fully-connected classifier heads, much '
+              'lower or absent in convolutional stacks, and modern '
+              'transformers often prefer p=0.1 with heavy augmentation.',
           startMs: 360000,
           endMs: 432000,
         ),
@@ -993,13 +1043,14 @@ const PodcastScript _podcast = PodcastScript(
           speaker: 'Host',
           text:
               'Implementation detail that bites everyone. PyTorch uses '
-              'so-called inverted dropout: during training it zeroes with '
-              'probability p and multiplies the survivors by one over one '
-              'minus p, so expected activation is preserved and eval mode is a '
-              'plain forward pass. That is why model dot eval is sufficient. '
-              'It is also why forgetting it is so insidious — the model still '
-              'runs, still returns plausible numbers, and quietly scores '
-              'worse, which you then misdiagnose as overfitting.',
+              'inverted dropout: during training it zeroes neurons with '
+              'probability p and multiplies the survivors by 1/(1-p), so '
+              'the expected activation magnitude is preserved and eval mode '
+              'is just a clean forward pass. That is why model.eval() alone '
+              'is sufficient. It is also why forgetting it is so insidious — '
+              'the model still runs, still returns plausible numbers, and '
+              'quietly scores worse, which you then misdiagnose as '
+              'overfitting. A perfect self-fulfilling bug.',
           startMs: 432000,
           endMs: 504000,
         ),
@@ -1007,13 +1058,15 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd8',
           speaker: 'Guest',
           text:
-              'Weight decay next. Classically you add lambda times the sum of '
+              'Weight decay next. Classically you add λ times the sum of '
               'squared weights to the loss. Take the gradient and you get a '
-              'term proportional to the weight itself, so each step nudges '
+              'term proportional to the weight itself — each step nudges '
               'every weight towards zero in proportion to its size. For plain '
-              'SGD, adding that penalty to the loss and multiplying weights by '
-              'a shrink factor are literally the same update. Two names, one '
-              'operation.',
+              'SGD, adding that L2 penalty to the loss and multiplying '
+              'weights by a shrink factor are literally the same update. Two '
+              'names, one operation. The intuition: you are imposing a prior '
+              'that simpler functions — those with smaller weights — are more '
+              'likely to generalise.',
           startMs: 504000,
           endMs: 576000,
         ),
@@ -1021,14 +1074,17 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd9',
           speaker: 'Host',
           text:
-              'And then Adam breaks the equivalence, which is the AdamW story. '
-              'Adam divides each update by a running estimate of that '
-              'parameter\'s gradient magnitude. If the L2 term arrives inside '
-              'the gradient, it goes through the same division — so a weight '
-              'with large gradients gets its decay damped, and a weight with '
-              'tiny gradients gets hammered. How much regularisation a '
-              'parameter receives ends up depending on its gradient history. '
-              'Nobody wanted that.',
+              'And then Adam breaks the equivalence, which is the AdamW '
+              'story. Adam divides each parameter\'s update by a running '
+              'estimate of its gradient magnitude. If the L2 penalty arrives '
+              'inside the gradient, it goes through that same per-parameter '
+              'division. A weight with historically large gradients gets its '
+              'decay damped; a weight with tiny gradients gets hammered. How '
+              'much regularisation a weight receives ends up depending on its '
+              'gradient history — absolutely nobody\'s intention. Loshchilov '
+              'and Hutter\'s 2017 paper decoupled them: compute the adaptive '
+              'step from the data gradient alone, then subtract a fixed '
+              'fraction of the weight separately. That is AdamW.',
           startMs: 576000,
           endMs: 648000,
         ),
@@ -1036,14 +1092,14 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd10',
           speaker: 'Guest',
           text:
-              'Loshchilov and Hutter\'s 2017 paper decouples them: compute the '
-              'adaptive step from the data gradient alone, then subtract a '
-              'fixed fraction of the weight separately. That is AdamW. It '
-              'restores uniform decay, makes learning rate and decay roughly '
-              'independent to tune, and closed a real generalisation gap '
-              'between Adam and SGD with momentum. In PyTorch, Adam with '
-              'weight decay is the coupled version, AdamW is the decoupled '
-              'one. Use AdamW.',
+              'AdamW restores uniform decay across parameters, makes the '
+              'learning rate and decay coefficient roughly independent to '
+              'tune, and closed a real generalisation gap between Adam and '
+              'SGD with momentum on image benchmarks. In PyTorch, Adam with '
+              'weight_decay is the coupled naive version; AdamW is the '
+              'decoupled proper one. For anything modern, reach for AdamW. '
+              'Exclude biases and normalisation scales from decay — shrinking '
+              'them constrains the model without buying any smoothness.',
           startMs: 648000,
           endMs: 720000,
         ),
@@ -1051,14 +1107,16 @@ const PodcastScript _podcast = PodcastScript(
           id: 'd11',
           speaker: 'Host',
           text:
-              'Early stopping and augmentation round it out. Early stopping is '
-              'a patience counter plus a saved best state dict — and the saved '
-              'state is the part people skip, which wastes most of the '
-              'benefit. Augmentation is different in kind: it encodes which '
-              'input changes should not change the output. Flips for cats yes, '
-              'for digits and road signs no. Colour jitter for objects yes, '
-              'for medical scans where intensity is the diagnosis absolutely '
-              'not.',
+              'Early stopping and augmentation round out the toolkit. Early '
+              'stopping is a patience counter plus careful checkpointing — '
+              'and the saved checkpoint is the part people skip, which wastes '
+              'most of the benefit. Augmentation is different in kind: it '
+              'encodes which input changes should not change the output. '
+              'Horizontal flips for natural images: yes. For handwritten '
+              'digits and road signs: absolutely not — a flipped "6" is a '
+              '"9", and a flipped stop sign is wrong. Colour jitter for '
+              'objects: yes. For medical imaging where pixel intensity is '
+              'the diagnosis: catastrophic.',
           startMs: 720000,
           endMs: 790000,
         ),
@@ -1067,13 +1125,15 @@ const PodcastScript _podcast = PodcastScript(
           speaker: 'Guest',
           text:
               'Closing frame. Regularisation looks like a bag of unrelated '
-              'tricks — deleting activations, penalising magnitudes, stopping '
-              'early, distorting images — and they share one goal: reduce the '
-              'effective capacity the model can spend on memorising, without '
-              'losing the capacity it needs for real structure. They stack, so '
-              'add them one at a time and measure. And know the ceiling: none '
-              'of this beats more real labelled data, because everything here '
-              'is compensation for not having it.',
+              'tricks — deleting neurons, penalising weight size, stopping '
+              'early, distorting images. They share one goal: reduce the '
+              'effective capacity the model can spend on memorising training '
+              'idiosyncrasies, without losing the capacity it needs for real '
+              'structure. They stack, so add them one at a time and measure '
+              'the marginal improvement. And know the ceiling: none of this '
+              'beats more real labelled data. Everything here is compensation '
+              'for not having it. If you can afford to label more examples, '
+              'that is always the better investment.',
           startMs: 790000,
           endMs: 856000,
         ),

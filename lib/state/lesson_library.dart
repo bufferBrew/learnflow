@@ -2,9 +2,11 @@ import 'package:flutter/foundation.dart';
 
 import '../models/lesson.dart';
 import '../models/topic.dart';
+import '../sample_data/agentic_workflows_lessons.dart';
 import '../sample_data/ai_lessons.dart';
 import '../sample_data/deep_learning_lessons.dart';
 import '../sample_data/python_lessons.dart';
+import '../sample_data/rag_lessons.dart';
 
 /// In-memory catalogue of all content. Backed by hard-coded Dart for now.
 class LessonLibraryProvider extends ChangeNotifier {
@@ -13,6 +15,8 @@ class LessonLibraryProvider extends ChangeNotifier {
       pythonTopic,
       aiFundamentalsTopic,
       deepLearningTopic,
+      ragTopic,
+      agenticWorkflowsTopic,
     ],
   }) : _topics = List.of(topics);
 
