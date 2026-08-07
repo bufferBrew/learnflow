@@ -14,13 +14,14 @@ const Lesson supervisedUnsupervisedLesson = Lesson(
   description:
       'Classification, regression, clustering and dimensionality reduction — '
       'what each paradigm needs from your data and how each one is evaluated.',
-  estimatedMinutes: 26,
+  estimatedMinutes: 33,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -621,6 +622,82 @@ print(final_labels)     # [0, 0, 1, 1, 1, 1, 1]
               'and the metre column is ignored. Standardise the features — '
               'subtract the mean and divide by the standard deviation — before '
               'clustering, fitting the scaler on the training data only.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-sup-pca-variance',
+      title: 'Find how many PCA components keep 95% variance',
+      prompt: [
+        ProseBlock(
+          'Given the digits dataset (64 features), write a function that '
+          'returns the smallest number of PCA components that retain at '
+          'least 95% of the variance. Use explained_variance_ratio_ and '
+          'cumulative sum. Then explain what information the discarded '
+          'components carried.',
+        ),
+      ],
+      starterCode: '''
+from sklearn.datasets import load_digits
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
+X, _ = load_digits(return_X_y=True)
+X_scaled = StandardScaler().fit_transform(X)
+
+
+def pca_components_for_variance(X, threshold=0.95):
+    """Return the smallest n_components retaining >= threshold variance."""
+    # TODO: fit PCA with all components, cumsum the explained ratios
+    ...
+
+
+n = pca_components_for_variance(X_scaled)
+print(f"Components for 95% variance: {n}")
+''',
+      solutionCode: '''
+import numpy as np
+from sklearn.datasets import load_digits
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
+X, _ = load_digits(return_X_y=True)
+X_scaled = StandardScaler().fit_transform(X)
+
+
+def pca_components_for_variance(X, threshold=0.95):
+    """Return the smallest n_components retaining >= threshold variance."""
+    pca = PCA().fit(X)     # fit all 64 components
+    cumsum = np.cumsum(pca.explained_variance_ratio_)
+    # cumsum[i] = variance retained by the first i+1 components
+    n = int(np.searchsorted(cumsum, threshold) + 1)
+    return n, cumsum[n - 1]
+
+
+n, var = pca_components_for_variance(X_scaled)
+print(f"Components for 95% variance: {n} (retains {var:.3f})")
+# Typically around 29-32 components out of 64.
+# The discarded ~35 components carry only 5% of the variance — likely
+# noise, fine pixel-level variation, or empty border regions. Keeping
+# them adds dimensionality without adding signal.
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'PCA(n_components=10) on this dataset would discard ~30% of '
+              'the variance. When is that acceptable?',
+          expectedAnswer:
+              'When you are using PCA as a preprocessing step for a model '
+              'that benefits from lower dimensionality (e.g. a kNN '
+              'classifier, or when memory is tight) and the discarded '
+              'variance is mostly noise rather than signal. The cross-'
+              'validated downstream metric is the arbiter: if classification '
+              'accuracy does not drop meaningfully with 10 components, '
+              'the discarded directions were not carrying class-relevant '
+              'information. PCA minimises reconstruction error, which is '
+              'not the same as maximising discriminability — directions '
+              'with low variance can still carry the class signal.',
         ),
       ],
     ),
@@ -1228,5 +1305,39 @@ const List<Source> _sources = [
     description:
         'Reference for clustering, decomposition and outlier detection, '
         'including the assumptions and failure modes of each algorithm.',
+  ),
+];
+
+const List<Source> _furtherReading = <Source>[
+  Source(
+    title: 'A Tutorial on PCA (Shlens, 2014)',
+    url: 'https://arxiv.org/abs/1404.1100',
+    description:
+        'Clear derivation of PCA from maximum variance and minimum '
+        'reconstruction error perspectives, with practical guidance on '
+        'choosing the number of components.',
+  ),
+  Source(
+    title: 'How to Use t-SNE Effectively — Distill.pub',
+    url: 'https://distill.pub/2016/misread-tsne/',
+    description:
+        'Interactive guide to t-SNE: what it preserves, what it distorts '
+        '(cluster sizes, global distances), and how to avoid misreading '
+        'its output.',
+  ),
+  Source(
+    title: 'Clustering — scikit-learn User Guide',
+    url: 'https://scikit-learn.org/stable/modules/clustering.html',
+    description:
+        'Comprehensive comparison of k-means, DBSCAN, hierarchical and '
+        'Gaussian mixture clustering with their assumptions and failure modes.',
+  ),
+  Source(
+    title: 'Deep Transfer Learning for NLP — Hugging Face Course',
+    url: 'https://huggingface.co/learn/nlp-course/chapter1/1',
+    description:
+        'Practical introduction to loading pre-trained transformers and '
+        'fine-tuning on small labelled datasets, plus parameter-efficient '
+        'alternatives like adapters and LoRA.',
   ),
 ];

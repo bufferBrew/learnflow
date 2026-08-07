@@ -15,13 +15,14 @@ const Lesson whatIsRagLesson = Lesson(
   description:
       'Why frozen parametric knowledge causes hallucination and staleness, '
       'and how retrieving documents at query time grounds generation instead.',
-  estimatedMinutes: 24,
+  estimatedMinutes: 32,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -314,6 +315,37 @@ Generated answer:
               'updated knowledge base underneath it all. The question is '
               'rarely "which one" — it is which problem each layer is there '
               'to solve.',
+        ),
+        CollapsibleBlock(
+          title: 'Deep dive: the cost and latency tradeoffs in production',
+          children: [
+            ProseBlock(
+              'A RAG pipeline adds latency compared to a plain LLM call: '
+              'embedding the query (typically 10-50ms for a small embedding '
+              'model), running an ANN search (1-10ms for a well-tuned index, '
+              'potentially more for very large corpora with metadata '
+              'filtering), and then the actual LLM generation with the '
+              'augmented prompt. The embedding and retrieval overhead is '
+              'usually dwarfed by the LLM\'s generation time for anything '
+              'more than a short answer, but on latency-sensitive '
+              'applications like real-time chat, every millisecond counts.',
+            ),
+            ProseBlock(
+              'Cost is dominated by two factors: the LLM call itself (where '
+              'retrieved chunks add input tokens to the prompt), and the '
+              'storage and compute for the vector index. Input tokens are '
+              'typically 3-5x cheaper than output tokens, so adding context '
+              'from retrieval costs less than generating more text. The index '
+              'side — storing and searching millions of vectors — has a '
+              'small but non-trivial ongoing cost, especially with HNSW '
+              'indexes which keep the graph in memory. For a team deciding '
+              'whether RAG is worth the infrastructure, the rule of thumb is: '
+              'if the knowledge changes weekly or the corpus exceeds 10x the '
+              'context window, RAG pays for itself; otherwise, simpler '
+              'approaches (long context or no augmentation at all) are worth '
+              'trying first.',
+            ),
+          ],
         ),
       ],
     ),
@@ -624,6 +656,134 @@ for s in scenarios:
               'should not go to RAG because there is nothing to retrieve — '
               'the task is entirely about behaviour, which is exactly what '
               'fine-tuning changes and retrieval cannot.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-rag-build-index',
+      title: 'Build a minimal embedding index with cosine retrieval',
+      prompt: [
+        ProseBlock(
+          'Implement build_index(documents, embed_fn) that takes a list of '
+          'text strings and an embedding function, and returns a dict mapping '
+          'each document index to its embedding vector. Then implement '
+          'retrieve(query, index, embed_fn, k=3) that returns the indices of '
+          'the k documents most similar to the query by cosine similarity.',
+        ),
+        ProseBlock(
+          'Use a simple hash-based embed_fn stub (e.g., sum of character '
+          'codes) so the exercise stands alone without an API call. The '
+          'point is the retrieval infrastructure, not the embedding quality.',
+        ),
+      ],
+      starterCode: '''
+def embed_fn(text):
+    """Toy embedding: map each character to its ASCII code and sum
+    into a 2-dimensional vector by position parity."""
+    even = sum(ord(c) for i, c in enumerate(text) if i % 2 == 0)
+    odd = sum(ord(c) for i, c in enumerate(text) if i % 2 == 1)
+    return (float(even), float(odd))
+
+
+def cosine_similarity(a, b):
+    dot = a[0] * b[0] + a[1] * b[1]
+    norm_a = (a[0] ** 2 + a[1] ** 2) ** 0.5
+    norm_b = (b[0] ** 2 + b[1] ** 2) ** 0.5
+    return dot / (norm_a * norm_b) if norm_a and norm_b else 0.0
+
+
+def build_index(documents, embed_fn):
+    """Return a dict mapping idx -> embedding vector."""
+    ...
+
+
+def retrieve(query, index, embed_fn, k=3):
+    """Return the indices of the k documents most similar to query."""
+    ...
+
+
+docs = [
+    "Paris is the capital of France",
+    "The Eiffel Tower is in Paris",
+    "Tokyo is the capital of Japan",
+    "Sushi is a popular Japanese dish",
+]
+idx = build_index(docs, embed_fn)
+results = retrieve("What is the capital of France?", idx, embed_fn, k=2)
+print([docs[i] for i in results])
+''',
+      solutionCode: '''
+def embed_fn(text):
+    even = sum(ord(c) for i, c in enumerate(text) if i % 2 == 0)
+    odd = sum(ord(c) for i, c in enumerate(text) if i % 2 == 1)
+    return (float(even), float(odd))
+
+
+def cosine_similarity(a, b):
+    dot = a[0] * b[0] + a[1] * b[1]
+    norm_a = (a[0] ** 2 + a[1] ** 2) ** 0.5
+    norm_b = (b[0] ** 2 + b[1] ** 2) ** 0.5
+    return dot / (norm_a * norm_b) if norm_a and norm_b else 0.0
+
+
+def build_index(documents, embed_fn):
+    return {i: embed_fn(doc) for i, doc in enumerate(documents)}
+
+
+def retrieve(query, index, embed_fn, k=3):
+    q_vec = embed_fn(query)
+    scored = [
+        (idx, cosine_similarity(q_vec, vec))
+        for idx, vec in index.items()
+    ]
+    scored.sort(key=lambda x: -x[1])
+    return [idx for idx, _ in scored[:k]]
+
+
+docs = [
+    "Paris is the capital of France",
+    "The Eiffel Tower is in Paris",
+    "Tokyo is the capital of Japan",
+    "Sushi is a popular Japanese dish",
+]
+idx = build_index(docs, embed_fn)
+results = retrieve("What is the capital of France?", idx, embed_fn, k=2)
+print([docs[i] for i in results])
+
+# First result should be doc 0: "Paris is the capital of France"
+# Second result should be doc 1: "The Eiffel Tower is in Paris"
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'Why does build_index embed every document at indexing time '
+              'rather than embedding each one on-the-fly during retrieval?',
+          expectedAnswer:
+              'Because indexing is the offline phase that runs once — '
+              'embedding 100,000 documents takes minutes and storing the '
+              'vectors takes space, but neither cost is paid per query. If '
+              'documents were embedded at query time, every query would pay '
+              'the embedding cost for the entire corpus, which is exactly '
+              'what RAG\'s two-phase design avoids. The offline/online '
+              'separation is the single most important architectural '
+              'decision in a RAG system.',
+        ),
+        SelfCheckQuestion(
+          question:
+              'This toy embed_fn produces terrible semantic vectors — '
+              'character sums do not encode meaning at all. Why is it still '
+              'useful for learning the retrieval loop?',
+          expectedAnswer:
+              'The retrieval infrastructure — the cosine comparison, the '
+              'ranking, the top-k selection — is identical regardless of '
+              'whether the embeddings come from this stub, from a real '
+              'transformer model, or from any other source. Learning the '
+              'control flow with a deterministic, inspectable embedding '
+              'function lets you verify the retrieval logic is correct '
+              'before introducing the complexity of a real embedding model. '
+              'The same code, with embed_fn replaced by a call to OpenAI\'s '
+              'or Cohere\'s embedding API, is a production retrieval system.',
         ),
       ],
     ),
@@ -1251,5 +1411,38 @@ const List<Source> _sources = [
         'LangChain\'s own walkthrough of building a RAG application, '
         'showing the same offline-index / online-query split this lesson '
         'presents in pseudocode.',
+  ),
+];
+
+const List<Source> _furtherReading = <Source>[
+  Source(
+    title: 'A Survey of Retrieval-Augmented Generation (Fan et al., 2024)',
+    url: 'https://arxiv.org/abs/2406.19469',
+    description:
+        'Comprehensive survey of the RAG ecosystem: naive RAG, advanced RAG, '
+        'and modular RAG architectures with production case studies.',
+  ),
+  Source(
+    title: 'Building RAG-based LLM Applications for Production — Anyscale',
+    url:
+        'https://www.anyscale.com/blog/a-comprehensive-guide-for-building-rag-based-llm-applications-part-1',
+    description:
+        'End-to-end production guide covering chunking strategies, embedding '
+        'model selection, vector store tradeoffs, and prompt engineering for RAG pipelines.',
+  ),
+  Source(
+    title: 'Lost in the Middle: How Language Models Use Long Contexts (Liu et al., 2023)',
+    url: 'https://arxiv.org/abs/2307.03172',
+    description:
+        'Empirical study showing that decoder-only LLMs attend best to the '
+        'beginning and end of a context window, the evidence behind the RAG-vs-long-context '
+        'tradeoff discussed in this lesson.',
+  ),
+  Source(
+    title: 'When Not to Use RAG: Choosing Between Fine-tuning, Prompt Stuffing, and Retrieval',
+    url: 'https://www.llamaindex.ai/blog/when-not-to-use-rag',
+    description:
+        'Practical framework for deciding among RAG, fine-tuning, and long-context approaches '
+        'based on corpus size, update frequency, and citation requirements.',
   ),
 ];

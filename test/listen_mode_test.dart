@@ -35,15 +35,15 @@ void main() {
 
       playback.play();
       await tester.pump(const Duration(seconds: 1));
-      expect(playback.currentTimeMs, 850);
+      expect(playback.currentTimeMs, 800);
 
       playback.setSpeed(2.0);
       await tester.pump(const Duration(seconds: 1));
-      expect(playback.currentTimeMs, 2850);
+      expect(playback.currentTimeMs, 2800);
 
       playback.pause();
       await tester.pump(const Duration(seconds: 1));
-      expect(playback.currentTimeMs, 2850);
+      expect(playback.currentTimeMs, 2800);
       expect(playback.isPlaying, isFalse);
     });
 
@@ -99,7 +99,7 @@ void main() {
 
       playback.play();
       await tester.pump(const Duration(seconds: 3));
-      expect(playback.currentTimeMs, 2550);
+      expect(playback.currentTimeMs, 2400);
 
       playback.selectVariant(PodcastVariant.concise);
       expect(playback.currentTimeMs, 0);
@@ -244,7 +244,7 @@ void main() {
       expect(find.byTooltip('Previous section'), findsOneWidget);
       expect(find.byTooltip('Next section'), findsOneWidget);
       expect(find.byTooltip('Play'), findsOneWidget);
-      expect(find.text('0.85x'), findsOneWidget);
+      expect(find.text('0.8x'), findsOneWidget);
     });
 
     testWidgets('play runs the clock and pause stops it', (
@@ -264,12 +264,12 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.text('−4:13'), findsOneWidget);
+      expect(find.text('−4:14'), findsOneWidget);
 
       await tester.tap(find.byTooltip('Pause'));
       await tester.pumpAndSettle();
       expect(playback.isPlaying, isFalse);
-      expect(playback.currentTimeMs, 4250);
+      expect(playback.currentTimeMs, 4000);
     });
 
     testWidgets('the fixed jumps and the speed picker drive playback', (
@@ -296,7 +296,7 @@ void main() {
         0,
       );
 
-      await tester.tap(find.text('0.85x'));
+      await tester.tap(find.text('0.8x'));
       await tester.pumpAndSettle();
       // The menu overlay sits under a transform the hit-test warning cannot
       // follow; the tap itself lands.
@@ -337,7 +337,7 @@ void main() {
       final double before = tester.getTopLeft(find.text(segments[0].text)).dy;
 
       await tester.tap(find.byTooltip('Play'));
-      // Section 2 starts at 0:24. At 0.85x, need ~30s of clock time.
+      // Section 2 starts at 0:24. At 0.8x, that takes 30s of clock time.
       await tester.pump(const Duration(seconds: 30));
       await tester.pumpAndSettle();
       playback.pause();
@@ -446,7 +446,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(playback.isPlaying, isFalse);
-      expect(playback.currentTimeMs, 850);
+      expect(playback.currentTimeMs, 800);
     });
   });
 }

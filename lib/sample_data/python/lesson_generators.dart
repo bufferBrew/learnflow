@@ -13,13 +13,14 @@ const Lesson generatorsLesson = Lesson(
   description:
       'The protocol behind every for loop, and how yield turns a function into '
       'a lazy stream of values.',
-  estimatedMinutes: 24,
+  estimatedMinutes: 32,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: _play,
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -205,6 +206,34 @@ print(list(flatten([1, [2, [3, 4]], 5])))   # [1, 2, 3, 4, 5]
               'store them in a list, or call the generator function again to '
               'get a fresh generator — the function is reusable even though the '
               'generator object is not.',
+        ),
+        ProseBlock(
+          'A generator can also receive values via .send(), which makes the '
+          'paused yield expression evaluate to the sent value. This turns '
+          'a generator into a two-way channel — sometimes called a coroutine. '
+          'Before native async/await existed, generator-based coroutines '
+          'were the primary concurrency mechanism. Today you rarely write '
+          '.send() by hand, but knowing it exists explains why await is not '
+          'magic.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+def echo():
+    """Receives values via send() and yields them back."""
+    while True:
+        received = yield                # yield is an expression, not a statement
+        yield f"echo: {received}"
+
+
+gen = echo()
+next(gen)          # prime: advance to the first (yield)
+print(gen.send("hello"))    # echo: hello — the value flows in and back out
+next(gen)          # advance past the inner yield, back to the outer receive
+print(gen.send("world"))    # echo: world
+gen.close()
+''',
+          caption: 'send() pushes data into a generator; yield receives it.',
         ),
       ],
     ),
@@ -591,6 +620,147 @@ print(first_errors(log_stream(), 3))
               'square brackets versus parentheses distinction is the whole '
               'difference between a program that returns in microseconds and '
               'one that never returns.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-gen-batched',
+      title: 'Yield values in batches',
+      prompt: [
+        ProseBlock(
+          'Write a generator batched(iterable, n) that yields tuples of up '
+          'to n items from the iterable, one batch at a time. Each tuple '
+          'should contain exactly n items except possibly the last. Use '
+          'itertools.islice and iter() to consume the source without '
+          'materialising it. This is the pattern behind database cursor '
+          'pagination and chunked file processing.',
+        ),
+      ],
+      starterCode: '''
+from itertools import islice
+
+
+def batched(iterable, n):
+    # TODO: yield tuples of up to n items, one batch at a time
+    ...
+
+
+print(list(batched(range(10), 3)))
+''',
+      solutionCode: '''
+from itertools import islice
+
+
+def batched(iterable, n):
+    it = iter(iterable)
+    while True:
+        batch = tuple(islice(it, n))
+        if not batch:
+            return
+        yield batch
+
+
+print(list(batched(range(10), 3)))
+# [(0, 1, 2), (3, 4, 5), (6, 7, 8), (9,)]
+
+# Since Python 3.12, itertools.batched does exactly this.
+from itertools import batched as std_batched
+print(list(std_batched(range(10), 3)))
+# same output
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'Why create it = iter(iterable) at the start rather than calling '
+              'islice(iterable, ...) each time?',
+          expectedAnswer:
+              'Because islice on a fresh iterable would always start from the '
+              'beginning, producing the same first N values every batch. '
+              'Wrapping it once in iter() gives us a single iterator that '
+              'islice advances each time, so each batch picks up where the '
+              'last left off.',
+        ),
+        SelfCheckQuestion(
+          question:
+              'Why use tuple(islice(it, n)) instead of list(islice(it, n))?',
+          expectedAnswer:
+              'Both work. tuple is immutable, which signals that batches are '
+              'read-only snapshots. The real choice is cosmetic; the memory '
+              'and performance difference is negligible at batch sizes.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-gen-roundrobin',
+      title: 'Interleave multiple iterables fairly',
+      prompt: [
+        ProseBlock(
+          'Write roundrobin(*iterables) that yields one item from each '
+          'iterable in turn, skipping exhausted ones, until all are done. '
+          'Use itertools.cycle on a list of iterators to manage the '
+          'round-robin scheduling. Remove exhausted iterators from the list '
+          'as they raise StopIteration.',
+        ),
+      ],
+      starterCode: '''
+from itertools import cycle
+
+
+def roundrobin(*iterables):
+    # TODO: cycle through iterators, skip exhausted ones
+    ...
+
+
+a = [1, 2, 3]
+b = "ab"
+c = [10, 20, 30, 40]
+print(list(roundrobin(a, b, c)))
+# Expected: [1, 'a', 10, 2, 'b', 20, 3, 30, 40]
+''',
+      solutionCode: '''
+from itertools import cycle
+
+
+def roundrobin(*iterables):
+    iterators = [iter(it) for it in iterables]
+    for it in cycle(iterators):
+        try:
+            yield next(it)
+        except StopIteration:
+            # Remove exhausted iterator; stop when none remain.
+            iterators.remove(it)
+            if not iterators:
+                return
+
+
+a = [1, 2, 3]
+b = "ab"
+c = [10, 20, 30, 40]
+print(list(roundrobin(a, b, c)))
+# [1, 'a', 10, 2, 'b', 20, 3, 30, 40]
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question: 'Why use cycle() instead of a nested loop with index '
+              'arithmetic?',
+          expectedAnswer:
+              'cycle() handles the wrap-around automatically and the code '
+              'expresses "go around the remaining iterators forever" directly. '
+              'An index-based version would need modulo arithmetic and special '
+              'handling for removed entries — equivalent logic, much noisier '
+              'code.',
+        ),
+        SelfCheckQuestion(
+          question:
+              'The list is mutated inside the for loop. Is that safe here?',
+          expectedAnswer:
+              'Yes — for it in cycle(iterators) creates an iterator over '
+              'the cycle, not the list itself. The cycle iterator does not '
+              'care if the underlying list changes, and our remove() call '
+              'only affects the ONE exhausted iterator. This pattern is '
+              'safe but deliberately avoids iterating the mutable list.',
         ),
       ],
     ),
@@ -1219,5 +1389,36 @@ const List<Source> _sources = [
     description:
         'A guided tour of iterators, generators, generator expressions and '
         'passing values into generators with send().',
+  ),
+];
+
+const List<Source> _furtherReading = [
+  Source(
+    title: 'Iterators and Iterables in Python — Real Python',
+    url: 'https://realpython.com/python-iterators-iterables/',
+    description:
+        'Step-by-step guide to the iteration protocol, writing custom iterators, '
+        'and the iterable/iterator distinction.',
+  ),
+  Source(
+    title: 'Introduction to Python Generators — Real Python',
+    url: 'https://realpython.com/introduction-to-python-generators/',
+    description:
+        'Comprehensive tutorial on yield, generator expressions, pipelines, '
+        'and profiling memory usage of generators vs lists.',
+  ),
+  Source(
+    title: 'PEP 255 – Simple Generators',
+    url: 'https://peps.python.org/pep-0255/',
+    description:
+        'The original PEP that introduced generator functions to Python, with '
+        'motivating use cases and design rationale.',
+  ),
+  Source(
+    title: 'PEP 380 – Syntax for Delegating to a Subgenerator',
+    url: 'https://peps.python.org/pep-0380/',
+    description:
+        'The PEP that introduced yield from, enabling delegation of send, throw, '
+        'and close to nested sub-generators.',
   ),
 ];

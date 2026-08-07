@@ -13,13 +13,14 @@ const Lesson asyncLesson = Lesson(
   description:
       'Coroutines, the event loop and structured concurrency — plus when '
       'threads or processes are the right answer instead.',
-  estimatedMinutes: 26,
+  estimatedMinutes: 34,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: _play,
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -219,6 +220,39 @@ except* ValueError as group:                        # except* handles groups
               'for url in urls: await fetch(url) is strictly sequential. Create '
               'the tasks first, or pass the coroutines to gather, so they '
               'overlap.',
+        ),
+        ProseBlock(
+          'asyncio.as_completed is the tool for processing results as they '
+          'arrive rather than waiting for all of them. It yields futures in '
+          'completion order, not submission order — ideal for dashboards, '
+          'streaming progress bars, or any scenario where the first result '
+          'is the most valuable.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+import asyncio
+import random
+
+
+async def fetch(url):
+    delay = random.uniform(0.1, 0.5)
+    await asyncio.sleep(delay)
+    return f"{url} done in {delay:.2f}s"
+
+
+async def main():
+    urls = ["a.com", "b.com", "c.com"]
+    # as_completed: handle each result the moment it arrives.
+    for coro in asyncio.as_completed([fetch(u) for u in urls]):
+        result = await coro
+        print(result)
+    # Output ordered by completion time, not url order.
+
+
+asyncio.run(main())
+''',
+          caption: 'as_completed yields results in completion order.',
         ),
       ],
     ),
@@ -688,6 +722,180 @@ asyncio.run(main())
               'loop.run_in_executor with a ProcessPoolExecutor, which uses a '
               'separate interpreter and therefore a separate GIL, at the cost '
               'of pickling arguments and results.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-async-taskgroup',
+      title: 'Use structured concurrency with TaskGroup',
+      prompt: [
+        ProseBlock(
+          'Rewrite the concurrent function using asyncio.TaskGroup instead of '
+          'gather. One of the fetches should fail, and the TaskGroup must '
+          'cancel the remaining tasks. Handle the resulting ExceptionGroup '
+          'with except* and print which tasks failed.',
+        ),
+      ],
+      starterCode: '''
+import asyncio
+
+
+async def fetch(name):
+    await asyncio.sleep(0.2)
+    if name == "bad":
+        raise ValueError(f"{name} failed")
+    return f"{name}-ok"
+
+
+async def main():
+    # TODO: use TaskGroup instead of gather, handle ExceptionGroup
+    ...
+
+
+asyncio.run(main())
+''',
+      solutionCode: '''
+import asyncio
+
+
+async def fetch(name):
+    await asyncio.sleep(0.2)
+    if name == "bad":
+        raise ValueError(f"{name} failed")
+    return f"{name}-ok"
+
+
+async def main():
+    try:
+        async with asyncio.TaskGroup() as group:
+            tasks = [group.create_task(fetch(n)) for n in ("a", "bad", "c")]
+        # Unreachable: "bad" failed, so the block exited via ExceptionGroup.
+    except* ValueError as eg:
+        print("value errors:", [str(e) for e in eg.exceptions])
+
+
+asyncio.run(main())
+# value errors: ['bad failed']
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'What happens to the "a" and "c" tasks when "bad" raises?',
+          expectedAnswer:
+              'TaskGroup cancels every sibling task the moment one fails. '
+              'The async with block exits with an ExceptionGroup containing '
+              'every exception that was raised. Unlike gather, no tasks are '
+              'left running unattended in the background.',
+        ),
+        SelfCheckQuestion(
+          question:
+              'Why does except* ValueError work here when there\'s only one '
+              'exception in the group?',
+          expectedAnswer:
+              'except* works on ExceptionGroup regardless of how many '
+              'exceptions it contains. With a single exception it behaves '
+              'the same as a plain except but is forward-compatible with '
+              'multiple failures.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-async-as-completed',
+      title: 'Process results as they arrive',
+      prompt: [
+        ProseBlock(
+          'Write fastest_three(urls) that fetches a list of URLs (pretend '
+          'with random delays), collects results as they complete using '
+          'asyncio.as_completed, and returns the first three successful '
+          'results as a list in completion order. Silently skip failures.',
+        ),
+      ],
+      starterCode: '''
+import asyncio
+import random
+
+
+async def pretend_fetch(url):
+    delay = random.uniform(0.1, 0.8)
+    await asyncio.sleep(delay)
+    if random.random() < 0.2:    # 20% chance of failure
+        raise ConnectionError(f"{url} unreachable")
+    return f"{url} OK ({delay:.2f}s)"
+
+
+async def fastest_three(urls):
+    # TODO: use as_completed, skip errors, collect first three successes
+    ...
+
+
+async def main():
+    urls = ["a.com", "b.com", "c.com", "d.com", "e.com"]
+    results = await fastest_three(urls)
+    for r in results:
+        print(r)
+
+
+asyncio.run(main())
+''',
+      solutionCode: '''
+import asyncio
+import random
+
+
+async def pretend_fetch(url):
+    delay = random.uniform(0.1, 0.8)
+    await asyncio.sleep(delay)
+    if random.random() < 0.2:
+        raise ConnectionError(f"{url} unreachable")
+    return f"{url} OK ({delay:.2f}s)"
+
+
+async def fastest_three(urls):
+    results = []
+    pending = [pretend_fetch(u) for u in urls]
+    for coro in asyncio.as_completed(pending):
+        try:
+            result = await coro
+            results.append(result)
+            if len(results) >= 3:
+                return results
+        except Exception:
+            pass    # skip failures silently
+    return results
+
+
+async def main():
+    urls = ["a.com", "b.com", "c.com", "d.com", "e.com"]
+    results = await fastest_three(urls)
+    for r in results:
+        print(r)
+    # Prints up to 3 results in completion order (fastest first).
+
+
+asyncio.run(main())
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'Why use as_completed instead of gather and then sorting?',
+          expectedAnswer:
+              'as_completed yields the FIRST result to complete, so the caller '
+              'can act on it immediately — update a progress bar, send a '
+              'partial response, or decide to stop early. gather would block '
+              'until every coroutine finishes before returning anything.',
+        ),
+        SelfCheckQuestion(
+          question:
+              'After collecting 3 results, what happens to the remaining '
+              'pending coroutines?',
+          expectedAnswer:
+              'They continue running in the background because as_completed '
+              'does not cancel them. For a clean shutdown, use a TaskGroup '
+              'and cancel explicitly, or pass an explicit timeout. In this '
+              'exercise the program exits shortly after, so stray tasks are '
+              'harmless.',
         ),
       ],
     ),
@@ -1339,5 +1547,36 @@ const List<Source> _sources = [
     description:
         'The page covering async/await, creating tasks, gather, TaskGroup, '
         'timeouts and cancellation semantics.',
+  ),
+];
+
+const List<Source> _furtherReading = [
+  Source(
+    title: 'Async IO in Python: A Complete Walkthrough — Real Python',
+    url: 'https://realpython.com/async-io-python/',
+    description:
+        'Comprehensive tutorial on asyncio: the event loop, coroutines, tasks, '
+        'and real-world patterns for concurrent I/O.',
+  ),
+  Source(
+    title: 'Python Concurrency: Threading vs Multiprocessing vs AsyncIO — Real Python',
+    url: 'https://realpython.com/python-concurrency/',
+    description:
+        'Decision guide comparing the three concurrency models with benchmarks '
+        'and guidance on when to use each.',
+  ),
+  Source(
+    title: 'PEP 3156 – Asynchronous IO Support Rebooted',
+    url: 'https://peps.python.org/pep-3156/',
+    description:
+        'The foundational PEP that restarted asyncio, explaining the event loop '
+        'design, transports, protocols, and coroutine integration.',
+  ),
+  Source(
+    title: 'Developing with asyncio — Python Docs',
+    url: 'https://docs.python.org/3/library/asyncio-dev.html',
+    description:
+        'Official guide to debugging asyncio programs, handling blocking calls, '
+        'and common concurrency pitfalls.',
   ),
 ];

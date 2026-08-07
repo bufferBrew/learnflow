@@ -14,13 +14,14 @@ const Lesson collectionsLesson = Lesson(
   description:
       'Choosing the right container, and the comprehensions and collections '
       'module that make them pleasant to use.',
-  estimatedMinutes: 24,
+  estimatedMinutes: 32,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: _play,
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -71,6 +72,62 @@ print(scores)
               'Methods that mutate in place — sort, reverse, append, extend — '
               'return None by convention. best = scores.sort() silently binds '
               'None. Use sorted(scores) when you want a value back.',
+        ),
+        ProseBlock(
+          'Slicing is not just for lists — any sequence type supports it, '
+          'including strings, tuples, and bytes. The slice syntax '
+          's[start:stop:step] works identically across all of them, and '
+          'the built-in slice() function lets you store a slice as a named '
+          'object for reuse: every_other = slice(None, None, 2).',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+# Slices work on any sequence, not just lists.
+text = "pythonista"
+print(text[2:6])         # 'thon'
+print(text[::-1])        # 'atsinohtyp'
+
+# Store a slice for reuse — clean and self-documenting.
+even_positions = slice(0, None, 2)
+odds = [10, 20, 30, 40, 50]
+print(odds[even_positions])     # [10, 30, 50]
+
+# Slice assignment: replace a contigous range in one go.
+values = [1, 2, 3, 4, 5]
+values[1:4] = [20, 30]
+print(values)                   # [1, 20, 30, 5]
+''',
+          caption: 'Slices work on any sequence; slice assignment mutates in place.',
+        ),
+        CollapsibleBlock(
+          title: 'When to use a list vs a tuple vs a set — a decision guide',
+          children: [
+            ProseBlock(
+              'Choosing the right container is most of Python performance '
+              'tuning. Ask yourself three questions: (1) Do I need order? '
+              'If yes, list or tuple. (2) Do the elements need to change? '
+              'If yes, list is your only option. (3) Am I repeatedly '
+              'checking membership ("is X in here")? If yes, set or dict, '
+              'because hashing gives O(1) lookup instead of O(n) scanning. '
+              'Mixing these up — using a list for membership tests — is the '
+              'single most common performance mistake in Python.',
+            ),
+            CodeBlock(
+              language: 'python',
+              code: '''
+# Anti-pattern: O(n*m) — scanning a list for every item in another list.
+users = [f"user_{i}" for i in range(10_000)]
+blocked = {f"user_{i}" for i in range(0, 10_000, 2)}   # a set
+# "is user in blocked?" is now O(1) per user, not O(n).
+
+# Anti-pattern: using a list where a tuple means "fixed record".
+def get_bounds():
+    return [0, 100]   # a list says "I might add more coordinates later"
+    # return (0, 100) # a tuple says "exactly a min and a max, no more"
+''',
+            ),
+          ],
         ),
       ],
     ),
@@ -124,6 +181,36 @@ print(chosen)                     # {'colour': 'red', 'size': 'L'}
               '"x in some_set" hashes once. Converting a list to a set before a '
               'loop of membership tests turns an O(n*m) loop into O(n+m).',
         ),
+        ProseBlock(
+          'The dict comprehension is a powerful tool for transforming '
+          'or filtering key-value data in one expression. Combined with '
+          'the walrus operator (:=) in Python 3.8+, you can build a dict '
+          'with conditional logic without repeating expensive computations. '
+          'This is particularly useful when processing API responses or '
+          'configuration data where keys need validation before insertion.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+# Transform and filter dicts in one expression.
+prices = {"apple": 0.99, "banana": 0.49, "cherry": 3.99, "date": 1.49}
+expensive = {k: v for k, v in prices.items() if v > 1.00}
+print(expensive)   # {'apple': 0.99, 'cherry': 3.99, 'date': 1.49}
+
+# Swap keys and values — watch out for duplicate values.
+swapped = {v: k for k, v in prices.items()}
+print(swapped.get(0.99))   # 'apple'
+
+# Using := to avoid repeated lookups in a dict comprehension.
+config = {"host": "db1", "port": "5432", "debug": "true"}
+parsed = {
+    k: int(v) if (v := raw.strip().lower()) == "true" or v.isdigit() else v
+    for k, raw in config.items()
+}
+print(parsed)  # {'host': 'db1', 'port': 5432, 'debug': True}
+''',
+          caption: 'Dict comprehensions with inline filtering and transformation.',
+        ),
       ],
     ),
     Section(
@@ -168,6 +255,35 @@ print(grid[(3, 4)])               # corner
 empty_set = set()                 # {} would be an empty dict
 ''',
           caption: 'Set algebra, deduplication and tuples as keys.',
+        ),
+        ProseBlock(
+          'Set comprehensions and frozen sets are two features worth knowing. '
+          'A set comprehension is the same shape as a list comprehension '
+          'but with curly braces: {x.lower() for x in words}. A frozenset '
+          'is an immutable set — it is hashable, so you can nest sets '
+          '(a set of frozensets is legal) or use them as dict keys. '
+          'This is how graph algorithms represent adjacency without '
+          'copying or sorting.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+# Set comprehension: deduplicate and transform in one pass.
+words = "the quick brown fox jumps over the lazy dog".split()
+unique_lengths = {len(w) for w in words}
+print(sorted(unique_lengths))     # [3, 4, 5]
+
+# Frozensets are hashable — you can nest them.
+graph = {
+    frozenset({"A", "B"}): 5,     # weight of edge A-B
+    frozenset({"B", "C"}): 3,
+}
+print(graph[frozenset({"B", "A"})])  # 5 — order independent
+
+# Sets of sets are illegal, but sets of frozensets are fine.
+neighbourhoods = {frozenset({"A", "B"}), frozenset({"B", "C"})}
+''',
+          caption: 'Set comprehensions for filtering; frozenset for nesting.',
         ),
       ],
     ),
@@ -223,6 +339,36 @@ print(pairs)      # [(1, 'x'), (1, 'y'), (2, 'x'), (2, 'y')]
               'intermediate list. Only materialise a list when you need to '
               'index it, keep it, or iterate over it more than once.',
         ),
+        ProseBlock(
+          'When you need to filter AND transform in separate steps, chaining '
+          'comprehensions or nesting generator expressions keeps each step '
+          'clear and avoids intermediate lists. This pattern, sometimes called '
+          '"comprehension pipeline", is especially powerful when the filter '
+          'is expensive — the lazy generator only runs it for values that '
+          'survived the earlier filters.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+# Chaining: filter first, then transform — no intermediate list.
+def is_valid(word):
+    return len(word) > 2 and word.isalpha()
+
+cleaned = (w.lower() for w in words if is_valid(w))
+titled = (w.title() for w in cleaned)
+print(list(titled))    # ['Ada', 'Grace', 'Alan', 'Hopper']
+
+# Practical: build a lookup table from a list of records.
+users = [
+    {"id": 1, "name": "Ada"},
+    {"id": 2, "name": "Grace"},
+    {"id": 3, "name": "Alan"},
+]
+by_id = {u["id"]: u for u in users}
+print(by_id[2]["name"])   # Grace
+''',
+          caption: 'Chained generators avoid intermediate collections.',
+        ),
       ],
     ),
     Section(
@@ -262,6 +408,41 @@ p = Point(3, 4)
 print(p.x, p[1], p._replace(y=9)) # 3 4 Point(x=3, y=9)
 ''',
           caption: 'Counter, defaultdict, deque and namedtuple.',
+        ),
+        ProseBlock(
+          'Beyond the core four, collections.OrderedDict maintains insertion '
+          'order with additional reordering methods like move_to_end(), which '
+          'makes it ideal for LRU caches. collections.ChainMap chains multiple '
+          'dicts together into a single view — reads search each mapping in '
+          'order, while writes go to the first mapping only. This is the '
+          'foundation of how Python resolves variable scopes under the hood.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+from collections import OrderedDict, ChainMap
+
+# OrderedDict for LRU caches — move_to_end() is O(1).
+cache = OrderedDict()
+cache["a"] = 1; cache["b"] = 2; cache["c"] = 3
+cache.move_to_end("a")      # "a" was just accessed, keep it fresh
+print(list(cache.keys()))   # ['b', 'c', 'a']
+
+# ChainMap: layered config with priority order.
+cli_args = {"host": "prod.db"}
+env_vars = {"host": "dev.db", "port": 5432}
+defaults = {"host": "localhost", "port": 3306, "debug": False}
+
+config = ChainMap(cli_args, env_vars, defaults)
+print(config["host"])    # 'prod.db' — first match wins
+print(config["port"])    # 5432
+print(config["debug"])   # False — from defaults
+
+# Writes always go to the first mapping.
+config["timeout"] = 30
+print(cli_args)          # {'host': 'prod.db', 'timeout': 30}
+''',
+          caption: 'OrderedDict for caches; ChainMap for layered config lookups.',
         ),
         CollapsibleBlock(
           title: 'Under the hood: why dict lookup is O(1), and what it costs',
@@ -502,6 +683,136 @@ print(list(dict.fromkeys(["b", "a", "b", "c", "a"])))   # ['b', 'a', 'c']
               'have to fall back to a linear comparison, or key on something '
               'hashable derived from each item, such as a tuple of its '
               'contents.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-col-sliding-window',
+      title: 'Compute a moving average with deque',
+      prompt: [
+        ProseBlock(
+          'Write moving_average(values, window_size) that yields the average '
+          'of the last window_size values as each new value arrives. Use '
+          'collections.deque with maxlen so the window stays bounded '
+          'automatically. The first average should appear only once the window '
+          'is full.',
+        ),
+      ],
+      starterCode: '''
+from collections import deque
+
+
+def moving_average(values, window_size):
+    # TODO: use deque(maxlen=window_size), yield averages
+    ...
+
+
+prices = [10, 12, 14, 13, 15, 17, 16]
+print(list(moving_average(prices, 3)))
+''',
+      solutionCode: '''
+from collections import deque
+
+
+def moving_average(values, window_size):
+    window = deque(maxlen=window_size)
+    for value in values:
+        window.append(value)
+        if len(window) == window_size:
+            yield sum(window) / window_size
+
+
+prices = [10, 12, 14, 13, 15, 17, 16]
+print(list(moving_average(prices, 3)))
+# [12.0, 13.0, 14.0, 15.0, 16.0]
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question: 'Why use deque(maxlen=N) rather than a plain list?',
+          expectedAnswer:
+              'maxlen=N makes deque automatically drop the oldest item when a '
+              'new one arrives, so the window never exceeds N and no manual '
+              'pop(0) — which would be O(n) on a list — is ever needed.',
+        ),
+        SelfCheckQuestion(
+          question:
+              'What does the generator yield before the window is full, and '
+              'why?',
+          expectedAnswer:
+              'Nothing — the if len(window) == window_size guard skips yields '
+              'until N values have arrived. This is the right behaviour for a '
+              'genuine moving average, which is undefined with fewer than N '
+              'points.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-col-set-intersection',
+      title: 'Find common elements with set algebra',
+      prompt: [
+        ProseBlock(
+          'Write common_interests(users) that takes a list of '
+          '(name, interests_set) tuples and returns a dict mapping each '
+          'pair of names to the set of interests they share. Skip a pair '
+          'when the intersection is empty and skip self-pairs. Use set '
+          'intersection (&) rather than manual loops.',
+        ),
+      ],
+      starterCode: '''
+def common_interests(users):
+    # TODO: for each pair of users, intersect their interest sets
+    ...
+
+
+users = [
+    ("ada", {"python", "rust", "hiking"}),
+    ("grace", {"rust", "hiking", "baking"}),
+    ("alan", {"python", "baking", "chess"}),
+]
+print(common_interests(users))
+''',
+      solutionCode: '''
+from itertools import combinations
+
+
+def common_interests(users):
+    shared = {}
+    for (name_a, interests_a), (name_b, interests_b) in combinations(users, 2):
+        common = interests_a & interests_b
+        if common:
+            shared[(name_a, name_b)] = common
+    return shared
+
+
+users = [
+    ("ada", {"python", "rust", "hiking"}),
+    ("grace", {"rust", "hiking", "baking"}),
+    ("alan", {"python", "baking", "chess"}),
+]
+print(common_interests(users))
+# {('ada', 'grace'): {'rust', 'hiking'}, ('ada', 'alan'): {'python'},
+#  ('grace', 'alan'): {'baking'}}
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question: 'Why use itertools.combinations rather than a nested loop?',
+          expectedAnswer:
+              'combinations(users, 2) generates each unordered pair exactly '
+              'once, so there is no need for if i < j guards and the intent '
+              '— "every pair" — is explicit. A nested loop with a guard is '
+              'equivalent but noisier.',
+        ),
+        SelfCheckQuestion(
+          question:
+              'What would happen if you passed a list instead of a set for '
+              'interests?',
+          expectedAnswer:
+              'The & operator on lists is not defined — it would raise '
+              'TypeError. Even if you used a manual intersection loop, the '
+              'membership tests would be O(n*m) rather than O(min(n,m)) with '
+              'hash-based sets.',
         ),
       ],
     ),
@@ -1063,5 +1374,32 @@ const List<Source> _sources = [
     description:
         'Reference for Counter, defaultdict, deque, namedtuple, OrderedDict '
         'and ChainMap, with recipes for each.',
+  ),
+];
+
+const List<Source> _furtherReading = [
+  Source(
+    title: 'Python List Methods — Real Python',
+    url: 'https://realpython.com/python-list/',
+    description:
+        'Deep dive into list operations, slicing, sorting, and performance characteristics.',
+  ),
+  Source(
+    title: 'Dictionaries in Python — Real Python',
+    url: 'https://realpython.com/python-dicts/',
+    description:
+        'Comprehensive guide to dict operations, views, merge operators, and custom key types.',
+  ),
+  Source(
+    title: 'Using defaultdict in Python — Real Python',
+    url: 'https://realpython.com/python-defaultdict/',
+    description:
+        'Tutorial on defaultdict patterns for grouping, counting, and eliminating key-existence checks.',
+  ),
+  Source(
+    title: 'heapq — Heap queue algorithm — Python Docs',
+    url: 'https://docs.python.org/3/library/heapq.html',
+    description:
+        'Reference for heapq (priority queues) and the related bisect module for maintaining sorted lists.',
   ),
 ];

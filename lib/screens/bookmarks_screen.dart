@@ -13,8 +13,8 @@ import '../widgets/section_header.dart';
 /// The Bookmarks section of the shell.
 ///
 /// Renders inside [AppShell]'s scaffold and so provides no scaffold of its own.
-/// Bookmarks are in-memory for now — [BookmarkProvider] gains persistence in a
-/// later milestone, at which point this screen needs no change.
+/// [BookmarkProvider] persists to disk when the app supplies a
+/// `SharedPreferences` instance; this screen needed no change for that.
 class BookmarksScreen extends StatelessWidget {
   const BookmarksScreen({super.key});
 

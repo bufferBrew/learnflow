@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../models/lesson.dart';
 import '../state/bookmark_provider.dart';
@@ -48,6 +49,16 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
     });
   }
 
+  void _shareLesson(Lesson lesson) {
+    SharePlus.instance.share(
+      ShareParams(
+        subject: lesson.title,
+        text: "I'm learning about '${lesson.title}' on LearnFlow — "
+            '${lesson.description}',
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
@@ -60,6 +71,12 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
         appBar: AppBar(
           title: Text(lesson.title),
           actions: <Widget>[
+            IconButton(
+              icon: const Icon(Icons.ios_share),
+              iconSize: 20,
+              tooltip: 'Share lesson',
+              onPressed: () => _shareLesson(lesson),
+            ),
             IconButton(
               icon: Icon(isBookmarked ? Icons.bookmark : Icons.bookmark_border),
               iconSize: 20,

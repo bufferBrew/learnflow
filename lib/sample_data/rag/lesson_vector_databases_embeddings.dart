@@ -16,13 +16,14 @@ const Lesson vectorDatabasesEmbeddingsLesson = Lesson(
       'How embeddings encode meaning as geometry, which similarity metric to '
       'use when, and how HNSW and IVF indexes make nearest-neighbour search '
       'fast at scale.',
-  estimatedMinutes: 27,
+  estimatedMinutes: 35,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -260,6 +261,35 @@ nprobe = nlist    -> equivalent to exact search, no speedup left
               'which is why very large, cost-sensitive corpora sometimes '
               'choose it over HNSW even though HNSW usually wins on raw '
               'recall-per-millisecond.',
+        ),
+        CollapsibleBlock(
+          title: 'Deep dive: how embedding model choice cascades into retrieval quality',
+          children: [
+            ProseBlock(
+              'The choice of embedding model is the single highest-leverage '
+              'decision in a RAG system, because every downstream retrieval '
+              'result inherits whatever the embedding space gets right or '
+              'wrong. Two models that score within a few points of each other '
+              'on MTEB (the Massive Text Embedding Benchmark) can behave '
+              'very differently on your specific corpus. An embedding model '
+              'trained predominantly on web search queries may underperform '
+              'on legal documents; one trained on sentence similarity may '
+              'miss the query-document relevance relationship that matters '
+              'for RAG specifically.',
+            ),
+            ProseBlock(
+              'A practical approach: run a small retrieval evaluation with '
+              '2-3 candidate embedding models against a labelled set of ~50 '
+              'real queries from your domain. Measure recall@k and MRR. The '
+              'difference between the best and worst embedding model on your '
+              'data is often larger than the difference between a basic and '
+              'an advanced retrieval pipeline with the same embedding model. '
+              'The lesson\'s exercise on cosine vs dot product is worth '
+              'revisiting here — each embedding model was trained against a '
+              'specific similarity metric, and using the wrong one silently '
+              'degrades results from the very first comparison.',
+            ),
+          ],
         ),
       ],
     ),
@@ -627,6 +657,128 @@ print("ivf nprobe=2:", search_ivf(query, vectors, centroids, assignments, nprobe
               'speed tradeoff, whereas on this eight-vector toy example the '
               'entire range from "fast and lossy" to "exact" is compressed '
               'into just four steps.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-vec-hnsw-search',
+      title: 'Simulate a single-layer navigable small world search',
+      prompt: [
+        ProseBlock(
+          'Implement hnsw_search(query, vectors, graph, entry_point, ef) '
+          'that performs a greedy search on a provided nearest-neighbour '
+          'graph. Start at entry_point, maintain a candidate set of up to ef '
+          'vectors, and at each step visit the unvisited neighbour of the '
+          'current best candidate that is closest to the query. Stop when no '
+          'unvisited neighbour improves the best distance.',
+        ),
+        ProseBlock(
+          'The graph is pre-built as a dict mapping vector index to a list '
+          'of its neighbour indices. The exercise is about the search '
+          'algorithm, not graph construction.',
+        ),
+      ],
+      starterCode: '''
+# 6 vectors in 2D, each with 2-3 nearest-neighbour edges.
+vectors = [
+    (0.10, 0.90), (0.15, 0.95), (0.85, 0.10),
+    (0.90, 0.05), (0.50, 0.50), (0.55, 0.45),
+]
+graph = {
+    0: [1, 3], 1: [0, 2, 4], 2: [1, 3, 5],
+    3: [0, 2], 4: [1, 5],    5: [2, 4],
+}
+query = (0.48, 0.52)
+entry_point = 2
+
+
+def euclidean(a, b):
+    return ((a[0] - b[0])**2 + (a[1] - b[1])**2) ** 0.5
+
+
+def hnsw_search(query, vectors, graph, entry_point, ef=3):
+    """Greedy search on the pre-built graph. Return the index of the
+    best-matching vector found."""
+    ...
+
+
+result = hnsw_search(query, vectors, graph, entry_point, ef=3)
+print("best match index:", result)
+print("best match vector:", vectors[result])
+''',
+      solutionCode: '''
+vectors = [
+    (0.10, 0.90), (0.15, 0.95), (0.85, 0.10),
+    (0.90, 0.05), (0.50, 0.50), (0.55, 0.45),
+]
+graph = {
+    0: [1, 3], 1: [0, 2, 4], 2: [1, 3, 5],
+    3: [0, 2], 4: [1, 5],    5: [2, 4],
+}
+query = (0.48, 0.52)
+entry_point = 2
+
+
+def euclidean(a, b):
+    return ((a[0] - b[0])**2 + (a[1] - b[1])**2) ** 0.5
+
+
+def hnsw_search(query, vectors, graph, entry_point, ef=3):
+    visited = set()
+    best = entry_point
+    best_dist = euclidean(query, vectors[entry_point])
+    candidates = [(best_dist, entry_point)]
+
+    while candidates:
+        candidates.sort()
+        _, current = candidates.pop(0)
+
+        if euclidean(query, vectors[current]) < best_dist:
+            best = current
+            best_dist = euclidean(query, vectors[current])
+
+        improved = False
+        for neighbor in graph.get(current, []):
+            if neighbor in visited:
+                continue
+            visited.add(neighbor)
+            d = euclidean(query, vectors[neighbor])
+            if d < best_dist:
+                best = neighbor
+                best_dist = d
+                improved = True
+            if len(candidates) < ef:
+                candidates.append((d, neighbor))
+
+        if not improved:
+            break
+
+    return best
+
+
+result = hnsw_search(query, vectors, graph, entry_point, ef=3)
+print("best match index:", result)       # 5 (or 4 — both in cluster 2)
+print("best match vector:", vectors[result])
+# The search walks from entry point 2 -> 5 -> 4, landing in the right
+# cluster without visiting 0 or 1 at all.
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'The search started at entry point 2 and found the answer '
+              'without visiting vectors 0 or 1. What property of the graph '
+              'made that possible, and why does it matter at scale?',
+          expectedAnswer:
+              'The graph connects each vector only to its nearest neighbours, '
+              'so edges are local — they lead to vectors in the same region '
+              'of the space. The search can skip entire distant regions '
+              '(vectors 0 and 1 in cluster 0 are far from the query) because '
+              'no edge from the entry point or its neighbours points toward '
+              'them. At scale, this means the search examines O(log N) '
+              'vectors instead of O(N), because each hop crosses a meaningful '
+              'distance and the graph naturally routes toward the query '
+              'rather than across irrelevant regions.',
         ),
       ],
     ),
@@ -1265,5 +1417,36 @@ const List<Source> _sources = [
         'Chroma\'s official quickstart, illustrating the lightweight, '
         'developer-first workflow this lesson contrasts with managed and '
         'bare-library alternatives.',
+  ),
+];
+
+const List<Source> _furtherReading = <Source>[
+  Source(
+    title: 'Dense Passage Retrieval for Open-Domain Question Answering (Karpukhin et al., 2020)',
+    url: 'https://arxiv.org/abs/2004.04906',
+    description:
+        'Foundational DPR paper that trained dual encoders for questions and passages, '
+        'the architecture underlying most modern retrieval embedding models.',
+  ),
+  Source(
+    title: 'Efficient and Robust Approximate Nearest Neighbor Search Using Hierarchical Navigable Small World Graphs (Malkov & Yashunin, 2018)',
+    url: 'https://arxiv.org/abs/1603.09320',
+    description:
+        'The original HNSW paper describing the multi-layer graph algorithm used by '
+        'every major vector database today for fast approximate search.',
+  ),
+  Source(
+    title: 'Evaluating Vector Search: Precision, Recall, and MRR — Weaviate Blog',
+    url: 'https://weaviate.io/blog/vector-search-evaluation',
+    description:
+        'Practical guide to measuring retrieval quality with precision, recall, and '
+        'mean reciprocal rank — the same metrics used to tune ANN indexes.',
+  ),
+  Source(
+    title: 'MTEB: Massive Text Embedding Benchmark Leaderboard',
+    url: 'https://huggingface.co/spaces/mteb/leaderboard',
+    description:
+        'The standard leaderboard for embedding models, showing performance across '
+        'retrieval, clustering, and classification tasks to inform model selection.',
   ),
 ];

@@ -15,13 +15,14 @@ const Lesson trainingVsInferenceLesson = Lesson(
       'Fitting a model versus serving it — held-out splits, cross-validation '
       'and learning curves, and why every number you quote must come from data '
       'the model has never seen.',
-  estimatedMinutes: 27,
+  estimatedMinutes: 34,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -741,6 +742,80 @@ print(overfit_epoch([0.71, 0.70, 0.70, 0.69], [0.73, 0.72, 0.72, 0.71]))
         ),
       ],
     ),
+    Exercise(
+      id: 'ex-tvi-cv-compare',
+      title: 'Compare cross-validation scores of two models',
+      prompt: [
+        ProseBlock(
+          'Use cross_val_score to compare a LogisticRegression against a '
+          'RandomForestClassifier on the breast cancer dataset using '
+          '5-fold stratified cross-validation. Report the mean and '
+          'standard deviation of F1 scores. Explain whether the difference '
+          'between the means is meaningful given the standard deviations.',
+        ),
+      ],
+      starterCode: '''
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import cross_val_score, StratifiedKFold
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+
+X, y = load_breast_cancer(return_X_y=True)
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=0)
+
+# TODO: build two pipelines, cross-validate both, print means +/- std
+...
+''',
+      solutionCode: '''
+from sklearn.datasets import load_breast_cancer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import cross_val_score, StratifiedKFold
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import make_pipeline
+
+X, y = load_breast_cancer(return_X_y=True)
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=0)
+
+for name, model in [
+    ("LogisticRegression", make_pipeline(StandardScaler(),
+        LogisticRegression(max_iter=2000))),
+    ("RandomForest", make_pipeline(StandardScaler(),
+        RandomForestClassifier(n_estimators=100, random_state=0))),
+]:
+    scores = cross_val_score(model, X, y, cv=cv, scoring="f1")
+    print(f"{name}: {scores.mean():.3f} +/- {scores.std():.3f}")
+
+# Typical output:
+# LogisticRegression: 0.975 +/- 0.012
+# RandomForest:       0.968 +/- 0.014
+# The means differ by ~0.007 but the standard deviations overlap.
+# With only 5 folds and ~560 examples, this difference is not
+# statistically meaningful — either model is fine.
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'The means differ by 0.007 but the standard deviations are '
+              '~0.014. Why is this difference probably not meaningful?',
+          expectedAnswer:
+              'Because the standard deviation measures the variability of '
+              'the score across different random splits of the same data. '
+              'If the score can vary by ±0.014 just from which rows land '
+              'in which fold, a difference of 0.007 between two models '
+              'could easily be an artefact of the particular split rather '
+              'than a genuine improvement. This is exactly why cross-'
+              'validation reports the spread alongside the mean — it tells '
+              'you how seriously to take the comparison. A t-test or '
+              'Wilcoxon test across the per-fold scores can quantify it, '
+              'but the visual rule is: if the error bars overlap, do not '
+              'call a winner without more evidence.',
+        ),
+      ],
+    ),
   ],
 );
 
@@ -1349,5 +1424,40 @@ const List<Source> _sources = [
         'A short practitioner-oriented summary of the two failure modes and the '
         'opposite remedies for each, matching the diagnose-before-you-act '
         'advice in this lesson.',
+  ),
+];
+
+const List<Source> _furtherReading = <Source>[
+  Source(
+    title: 'Learning Curves — scikit-learn docs',
+    url: 'https://scikit-learn.org/stable/modules/learning_curve.html',
+    description:
+        'API reference and theory behind learning_curve(), showing how to '
+        'diagnose bias and variance from training and validation scores '
+        'at varying dataset sizes.',
+  ),
+  Source(
+    title: 'TimeSeriesSplit and GroupKFold — scikit-learn',
+    url: 'https://scikit-learn.org/stable/modules/cross_validation.html#cross-validation-iterators',
+    description:
+        'Reference for the temporal and grouped cross-validation strategies, '
+        'with examples showing exactly when to use each instead of '
+        'plain KFold.',
+  ),
+  Source(
+    title: 'Model evaluation and selection — scikit-learn User Guide',
+    url: 'https://scikit-learn.org/stable/model_selection.html',
+    description:
+        'Comprehensive guide to cross-validation, hyperparameter tuning, '
+        'and the proper workflow from train/validation/test splits to '
+        'final model selection.',
+  ),
+  Source(
+    title: 'A Recipe for Training Neural Networks (Karpathy, 2019)',
+    url: 'https://karpathy.github.io/2019/04/25/recipe/',
+    description:
+        'A practitioner\'s guide to the training loop: diagnosing '
+        'overfitting/underfitting, tuning learning rates, and the '
+        'step-by-step process of making a model train.',
   ),
 ];

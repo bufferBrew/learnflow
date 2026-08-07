@@ -14,13 +14,14 @@ const Lesson oopLesson = Lesson(
   description:
       'Classes, instances, dunder methods and inheritance — and how to decide '
       'when a class is the right answer at all.',
-  estimatedMinutes: 26,
+  estimatedMinutes: 34,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: _play,
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -82,6 +83,43 @@ print(acct.owner, acct.balance, acct.history)
 # ada 120 [('deposit', 50), ('withdraw', 30)]
 ''',
           caption: '__init__ attaches state; methods act on it through self.',
+        ),
+        ProseBlock(
+          'A common pattern is to make objects immutable after construction '
+          'by storing all state in __init__ and never mutating anywhere else. '
+          'Combined with __hash__, this produces value objects that behave '
+          'like built-in types: they compare by value, hash consistently, and '
+          'can be used as dict keys. This is the pattern behind '
+          '@dataclass(frozen=True).',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+class Money:
+    def __init__(self, amount, currency="GBP"):
+        self.amount = amount
+        self.currency = currency
+
+    def __repr__(self):
+        return f"Money({self.amount!r}, {self.currency!r})"
+
+    def __eq__(self, other):
+        if not isinstance(other, Money):
+            return NotImplemented
+        return (self.amount, self.currency) == (other.amount, other.currency)
+
+    def __hash__(self):
+        return hash((self.amount, self.currency))
+
+    # No setters, no mutators — the object is effectively immutable.
+    # Callers who need a different amount create a new instance.
+
+
+wallet = {Money(5, "GBP"): "coffee money", Money(10, "USD"): "lunch money"}
+print(wallet[Money(5, "GBP")])         # coffee money — value equality works
+print(len({Money(5), Money(5)}))      # 1 — value identity
+''',
+          caption: 'Value objects: immutable after __init__, compare by value.',
         ),
       ],
     ),
@@ -211,6 +249,42 @@ print(Temperature.is_freezing(-4))  # True
               'access. A double underscore triggers name mangling to '
               '_ClassName__attr, which exists to avoid collisions in '
               'subclasses, not to provide privacy.',
+        ),
+        ProseBlock(
+          '@cached_property (from functools) is a specialised property that '
+          'computes its value once on first access and then caches it, '
+          'replacing the descriptor on the instance. It is ideal for values '
+          'that are expensive to compute but stable over the object\'s '
+          'lifetime — like a parsed configuration or a database connection '
+          'string derived from environment variables.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+from functools import cached_property
+import time
+
+
+class Report:
+    def __init__(self, data):
+        self.data = data
+
+    @cached_property
+    def summary(self):
+        print("computing summary (expensive)...")
+        time.sleep(0.5)    # pretend this is CPU or I/O heavy
+        return sum(self.data) / len(self.data)
+
+
+r = Report([10, 20, 30, 40])
+print(r.summary)    # computing summary (expensive)... / 25.0
+print(r.summary)    # 25.0 — cached, no recomputation
+print(r.summary)    # 25.0 — still cached
+
+# Unlike @property, the value is stored ON the instance after first access.
+print("summary" in r.__dict__)   # True
+''',
+          caption: 'cached_property: compute once, store on the instance.',
         ),
       ],
     ),
@@ -421,6 +495,43 @@ print(Order("grace").items)   # [] - default_factory made a new list
           'a plain class when behaviour dominates, and a NamedTuple or a plain '
           'dict when it is genuinely just data being passed through. The '
           'decision is about what you want readers to notice.',
+        ),
+        ProseBlock(
+          'The field() function gives fine-grained control over each field: '
+          'default for immutable defaults (field(default=42)), '
+          'default_factory for mutable defaults, init=False to skip a field '
+          'in __init__, repr=False to hide it from __repr__, and compare=False '
+          'to exclude it from __eq__. This lets you model complex object '
+          'shapes while keeping the generated methods correct.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+from dataclasses import dataclass, field
+import uuid
+
+
+@dataclass
+class User:
+    name: str
+    email: str
+    id: str = field(default_factory=lambda: str(uuid.uuid4()), repr=False)
+    active: bool = True
+    _cache: dict = field(default_factory=dict, compare=False, repr=False)
+
+    def full_email(self):
+        return f"{self.name} <{self.email}>"
+
+
+# ID is generated automatically and hidden from repr and equality.
+u1 = User("Ada", "ada@example.com")
+u2 = User("Ada", "ada@example.com")
+print(u1)                    # User(name='Ada', email='ada@example.com', active=True)
+print(u1 == u2)              # True — id and _cache excluded from comparison
+print(u1.id == u2.id)        # False — each gets a different UUID
+print(u1.full_email())       # Ada <ada@example.com>
+''',
+          caption: 'field() controls generation: init, repr, compare, and defaults.',
         ),
       ],
     ),
@@ -701,6 +812,191 @@ print(sum(s.area() for s in shapes))     # 7.141592653589793
               'or another base is mixed in. Hard-coding the base name skips any '
               'class that was inserted between them and breaks cooperative '
               'multiple inheritance.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-oop-dataclass',
+      title: 'Replace boilerplate with a dataclass',
+      prompt: [
+        ProseBlock(
+          'The InventoryItem class below has a hand-written __init__, '
+          '__repr__, and __eq__. Replace it with a @dataclass that produces '
+          'identical behaviour. The items field must default to an empty list '
+          'per instance, not be shared. Use field(default_factory=list). '
+          'Add a total_value property that returns price * quantity.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+class InventoryItem:
+    def __init__(self, name, price, quantity=0):
+        self.name = name
+        self.price = price
+        self.quantity = quantity
+
+    def __repr__(self):
+        return f"InventoryItem(name={self.name!r}, price={self.price}, quantity={self.quantity})"
+
+    def __eq__(self, other):
+        if not isinstance(other, InventoryItem):
+            return NotImplemented
+        return (self.name, self.price, self.quantity) == (other.name, other.price, other.quantity)
+''',
+        ),
+      ],
+      starterCode: '''
+from dataclasses import dataclass, field
+
+
+# TODO: convert to @dataclass, add total_value property
+class InventoryItem:
+    def __init__(self, name, price, quantity=0):
+        self.name = name
+        self.price = price
+        self.quantity = quantity
+
+    def __repr__(self):
+        return f"InventoryItem(name={self.name!r}, price={self.price}, quantity={self.quantity})"
+
+    def __eq__(self, other):
+        if not isinstance(other, InventoryItem):
+            return NotImplemented
+        return (self.name, self.price, self.quantity) == (other.name, other.price, other.quantity)
+
+
+i1 = InventoryItem("Widget", 9.99, 5)
+i2 = InventoryItem("Widget", 9.99, 5)
+print(i1, i1 == i2)
+''',
+      solutionCode: '''
+from dataclasses import dataclass, field
+
+
+@dataclass
+class InventoryItem:
+    name: str
+    price: float
+    quantity: int = 0
+
+    @property
+    def total_value(self):
+        return self.price * self.quantity
+
+
+i1 = InventoryItem("Widget", 9.99, 5)
+i2 = InventoryItem("Widget", 9.99, 5)
+print(i1)                     # InventoryItem(name='Widget', price=9.99, quantity=5)
+print(i1 == i2)               # True
+print(i1.total_value)         # 49.95
+print(i1)  # also works
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'How many lines of hand-written code did the dataclass remove?',
+          expectedAnswer:
+              'It removed __init__ (5 lines), __repr__ (2 lines), and __eq__ '
+              '(4 lines) — 11 lines replaced by 4 annotated fields. That is '
+              'the whole value proposition of dataclasses: less code to '
+              'maintain, fewer places for the generated logic to drift.',
+        ),
+        SelfCheckQuestion(
+          question:
+              'What would happen if you wrote quantity: list = [] instead of '
+              'field(default_factory=list)?',
+          expectedAnswer:
+              'Python would raise ValueError at class definition time: '
+              'dataclasses detect mutable defaults and refuse them, forcing '
+              'you to use default_factory. This is a deliberate guard against '
+              'the same shared-default bug as function parameters.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-oop-compose',
+      title: 'Choose composition over inheritance',
+      prompt: [
+        ProseBlock(
+          'Below, a Car inherits from Engine just to get a start() method. '
+          'This is a classic misuse — a Car HAS an Engine, it ISN\'T one. '
+          'Rewrite Car to hold an Engine as an attribute (composition) and '
+          'delegate start() to it. Make Engine a separate class that Car '
+          'accepts in its constructor.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+class Engine:
+    def start(self):
+        return "vroom"
+
+class Car(Engine):       # wrong: Car IS-NOT-AN Engine
+    def __init__(self, model):
+        self.model = model
+''',
+        ),
+      ],
+      starterCode: '''
+class Engine:
+    def start(self):
+        return "vroom"
+
+
+class Car(Engine):      # TODO: replace inheritance with composition
+    def __init__(self, model):
+        ...
+
+
+car = Car("Sedan", Engine())
+print(car.model, car.start())
+''',
+      solutionCode: '''
+class Engine:
+    def start(self):
+        return "vroom"
+
+
+class Car:
+    def __init__(self, model, engine):
+        self.model = model
+        self.engine = engine          # composition: Car HAS an Engine
+
+    def start(self):
+        return self.engine.start()    # delegate, don't inherit
+
+
+car = Car("Sedan", Engine())
+print(car.model, car.start())         # Sedan vroom
+
+# Composition lets you swap implementations without changing Car.
+class ElectricEngine:
+    def start(self):
+        return "whirr"
+
+ev = Car("Model S", ElectricEngine())
+print(ev.model, ev.start())           # Model S whirr
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'What advantage does composition have over inheritance here?',
+          expectedAnswer:
+              'Car can accept any object with a start() method — gas, electric, '
+              'mock engines for testing — without changing a line of Car. With '
+              'inheritance, changing the engine type means changing Car\'s '
+              'class hierarchy. Composition also keeps Car\'s namespace clean: '
+              'no inherited methods polluting it.',
+        ),
+        SelfCheckQuestion(
+          question:
+              'How would you test Car without a real Engine?',
+          expectedAnswer:
+              'Pass a mock or stub object with a start() method. This is '
+              'trivial with composition (just pass a different object) but '
+              'nearly impossible with inheritance without monkey-patching.',
         ),
       ],
     ),
@@ -1309,5 +1605,36 @@ const List<Source> _sources = [
     description:
         'The reference for every special method: object creation, attribute '
         'access, descriptors, __slots__, operators and the MRO.',
+  ),
+];
+
+const List<Source> _furtherReading = [
+  Source(
+    title: 'dataclasses — Python Docs',
+    url: 'https://docs.python.org/3/library/dataclasses.html',
+    description:
+        'Complete reference for @dataclass, field(), __post_init__, frozen, '
+        'slots, and all generated methods.',
+  ),
+  Source(
+    title: 'Python @property Explained — Real Python',
+    url: 'https://realpython.com/python-property/',
+    description:
+        'Deep dive into property(), .getter, .setter, .deleter, and the '
+        'descriptor protocol that makes them work.',
+  ),
+  Source(
+    title: 'Supercharge Your Classes With Python super() — Real Python',
+    url: 'https://realpython.com/python-super/',
+    description:
+        'Comprehensive guide to super(), MRO, cooperative multiple inheritance, '
+        'and the pitfalls of hard-coding parent class names.',
+  ),
+  Source(
+    title: 'Inheritance and Composition: A Python OOP Guide — Real Python',
+    url: 'https://realpython.com/inheritance-composition-python/',
+    description:
+        'When to inherit vs when to compose, with concrete examples and '
+        'design heuristics for object modelling.',
   ),
 ];

@@ -12,6 +12,8 @@ class LessonProgress {
     this.lastPodcastPositionMs = 0,
     this.lastVisitedAt,
     this.completedAt,
+    this.reviewStage = -1,
+    this.nextReviewAt,
   });
 
   final String lessonId;
@@ -29,6 +31,17 @@ class LessonProgress {
 
   /// Set when the fifth and final mode is completed.
   final DateTime? completedAt;
+
+  /// Index into [ProgressProvider.reviewIntervalsDays], or `-1` before this
+  /// lesson has ever entered the spaced-repetition queue.
+  final int reviewStage;
+
+  /// When this lesson next becomes "due" in the Review Queue. Null until the
+  /// first review session.
+  final DateTime? nextReviewAt;
+
+  /// Whether this lesson has ever entered the spaced-repetition schedule.
+  bool get isInReviewQueue => reviewStage >= 0;
 
   bool isDone(LessonMode mode) => switch (mode) {
     LessonMode.read => readDone,
@@ -57,6 +70,8 @@ class LessonProgress {
     int? lastPodcastPositionMs,
     DateTime? lastVisitedAt,
     DateTime? completedAt,
+    int? reviewStage,
+    DateTime? nextReviewAt,
   }) {
     return LessonProgress(
       lessonId: lessonId,
@@ -69,6 +84,8 @@ class LessonProgress {
           lastPodcastPositionMs ?? this.lastPodcastPositionMs,
       lastVisitedAt: lastVisitedAt ?? this.lastVisitedAt,
       completedAt: completedAt ?? this.completedAt,
+      reviewStage: reviewStage ?? this.reviewStage,
+      nextReviewAt: nextReviewAt ?? this.nextReviewAt,
     );
   }
 
@@ -80,4 +97,38 @@ class LessonProgress {
     LessonMode.review => copyWith(reviewDone: done),
     LessonMode.play => copyWith(playDone: done),
   };
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'lessonId': lessonId,
+    'readDone': readDone,
+    'practiceDone': practiceDone,
+    'listenDone': listenDone,
+    'reviewDone': reviewDone,
+    'playDone': playDone,
+    'lastPodcastPositionMs': lastPodcastPositionMs,
+    'lastVisitedAt': lastVisitedAt?.toIso8601String(),
+    'completedAt': completedAt?.toIso8601String(),
+    'reviewStage': reviewStage,
+    'nextReviewAt': nextReviewAt?.toIso8601String(),
+  };
+
+  factory LessonProgress.fromJson(Map<String, dynamic> json) => LessonProgress(
+    lessonId: json['lessonId'] as String,
+    readDone: json['readDone'] as bool? ?? false,
+    practiceDone: json['practiceDone'] as bool? ?? false,
+    listenDone: json['listenDone'] as bool? ?? false,
+    reviewDone: json['reviewDone'] as bool? ?? false,
+    playDone: json['playDone'] as bool? ?? false,
+    lastPodcastPositionMs: json['lastPodcastPositionMs'] as int? ?? 0,
+    lastVisitedAt: json['lastVisitedAt'] == null
+        ? null
+        : DateTime.parse(json['lastVisitedAt'] as String),
+    completedAt: json['completedAt'] == null
+        ? null
+        : DateTime.parse(json['completedAt'] as String),
+    reviewStage: json['reviewStage'] as int? ?? -1,
+    nextReviewAt: json['nextReviewAt'] == null
+        ? null
+        : DateTime.parse(json['nextReviewAt'] as String),
+  );
 }

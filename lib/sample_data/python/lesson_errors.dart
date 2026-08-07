@@ -14,13 +14,14 @@ const Lesson errorsLesson = Lesson(
   description:
       'Exceptions as control flow: raising, catching, chaining and cleaning up '
       'without hiding bugs.',
-  estimatedMinutes: 22,
+  estimatedMinutes: 30,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: _play,
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -74,6 +75,33 @@ print(err.args)                     # ('bad port',)
               'swallows Ctrl-C and orderly shutdown. If you truly need a '
               'catch-all, write "except Exception:" — and log the exception '
               'rather than passing.',
+        ),
+        ProseBlock(
+          'Beyond the basic hierarchy, Python 3.11 introduced ExceptionGroup '
+          'and the except* syntax. When multiple concurrent tasks fail — each '
+          'with a different exception — a single Exception object cannot '
+          'represent that. ExceptionGroup wraps them together, and except* '
+          'lets you handle each type present in the group, pulling out the '
+          'ones you can manage and letting the rest propagate.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+# ExceptionGroup: multiple failures wrapped together (Python 3.11+).
+try:
+    raise ExceptionGroup("validation", [
+        ValueError("bad email"),
+        KeyError("missing name"),
+        ValueError("bad phone"),
+    ])
+except* ValueError as eg:
+    print("value errors:", eg.exceptions)
+except* KeyError as eg:
+    print("key errors:", eg.exceptions)
+# value errors: (ValueError('bad email'), ValueError('bad phone'))
+# key errors: (KeyError('missing name'),)
+''',
+          caption: 'except* pulls specific types from an ExceptionGroup.',
         ),
       ],
     ),
@@ -183,6 +211,36 @@ def retry_once(fn):
         raise
 ''',
           caption: 'One base class per package; structured attributes on top.',
+        ),
+        ProseBlock(
+          'The difference between assert and raise is critical and often '
+          'misunderstood. assert is for programmer errors — invariants that '
+          'should be mathematically impossible. raise is for expected failures '
+          '— bad input, missing files, network errors. Crucially, assertions '
+          'are stripped when Python runs with -O (optimise), so production '
+          'code must never rely on them for validation.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+# assert: "this can never happen" (stripped with python -O).
+def sqrt(x):
+    assert x >= 0, "sqrt of negative number"   # programmer mistake
+    return x ** 0.5
+
+# raise: "this might happen, and the caller can handle it".
+def divide(a, b):
+    if b == 0:
+        raise ValueError("cannot divide by zero")   # expected failure
+    return a / b
+
+# assert with a message — the message is part of the AssertionError.
+try:
+    sqrt(-4)
+except AssertionError as exc:
+    print(exc)    # sqrt of negative number
+''',
+          caption: 'assert is for invariants; raise is for expected failures.',
         ),
       ],
     ),
@@ -336,6 +394,43 @@ except ValueError:
 ''',
           caption:
               'Returning False from __exit__ lets the exception propagate.',
+        ),
+        ProseBlock(
+          'contextlib also has several ready-made managers worth knowing. '
+          'contextlib.redirect_stdout captures print output to a file or '
+          'StringIO. contextlib.suppress silently swallows specific '
+          'exceptions — use it when a failure is genuinely irrelevant. And '
+          'contextlib.ExitStack lets you manage a dynamic number of context '
+          'managers, which is essential when you do not know at compile time '
+          'how many resources you will need.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+from contextlib import redirect_stdout, ExitStack, suppress
+import io
+
+# Capture all print output inside a block.
+buffer = io.StringIO()
+with redirect_stdout(buffer):
+    print("captured")
+    print("also captured")
+print("output:", repr(buffer.getvalue()))
+# output: 'captured\\nalso captured\\n'
+
+# ExitStack: manage a variable number of files.
+filenames = ["a.txt", "b.txt", "c.txt"]
+with ExitStack() as stack:
+    handles = [stack.enter_context(open(f, "w")) for f in filenames]
+    for i, h in enumerate(handles):
+        h.write(f"file {i}")
+# All three files are closed when the block exits.
+
+# suppress: swallow specific exceptions silently.
+with suppress(FileNotFoundError):
+    os.remove("nonexistent.txt")   # no error if the file doesn't exist
+''',
+          caption: 'redirect_stdout, ExitStack, and suppress for common patterns.',
         ),
       ],
     ),
@@ -592,6 +687,162 @@ except KeyError as exc:
               'when you want to log, count or report what was suppressed — '
               'because a silently swallowed exception is indistinguishable from '
               'code that never ran.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-err-retry',
+      title: 'Build a retry loop with exponential backoff',
+      prompt: [
+        ProseBlock(
+          'Write retry_with_backoff(fn, max_attempts=3, base_delay=0.1) that '
+          'calls fn() and retries on any Exception, doubling the delay each '
+          'time. If all attempts fail, re-raise the last exception with a '
+          'helpful message chained via "from". Use time.sleep for the delay '
+          'and return the result on success.',
+        ),
+      ],
+      starterCode: '''
+import time
+
+
+def retry_with_backoff(fn, max_attempts=3, base_delay=0.1):
+    # TODO: loop up to max_attempts, with exponentially increasing delay
+    ...
+
+
+def always_fails():
+    raise ConnectionError("no route to host")
+
+
+try:
+    retry_with_backoff(always_fails, max_attempts=3, base_delay=0.1)
+except ConnectionError as exc:
+    print("gave up:", exc)
+''',
+      solutionCode: '''
+import time
+
+
+def retry_with_backoff(fn, max_attempts=3, base_delay=0.1):
+    last_exc = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return fn()
+        except Exception as exc:
+            last_exc = exc
+            if attempt < max_attempts:
+                delay = base_delay * (2 ** (attempt - 1))
+                print(f"attempt {attempt} failed, retrying in {delay:.2f}s")
+                time.sleep(delay)
+    raise RuntimeError(f"all {max_attempts} attempts failed") from last_exc
+
+
+def always_fails():
+    raise ConnectionError("no route to host")
+
+
+try:
+    retry_with_backoff(always_fails, max_attempts=3, base_delay=0.1)
+except RuntimeError as exc:
+    print("gave up:", exc)
+    print("caused by:", exc.__cause__)
+# attempt 1 failed, retrying in 0.10s
+# attempt 2 failed, retrying in 0.20s
+# gave up: all 3 attempts failed
+# caused by: no route to host
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question: 'Why chain with "from last_exc" instead of just raising '
+              'RuntimeError?',
+          expectedAnswer:
+              'Without "from", the traceback would show RuntimeError with no '
+              'connection to the underlying failure, making debugging harder. '
+              'The chain preserves the full evidence: "all attempts failed '
+              'BECAUSE of ConnectionError".',
+        ),
+        SelfCheckQuestion(
+          question:
+              'Why catch Exception rather than BaseException?',
+          expectedAnswer:
+              'BaseException includes KeyboardInterrupt and SystemExit. '
+              'Retrying on Ctrl-C would hang the program — the user is '
+              'explicitly asking it to stop, and that intent must be '
+              'respected.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-err-exitstack',
+      title: 'Manage dynamic resources with ExitStack',
+      prompt: [
+        ProseBlock(
+          'Write open_files(paths) that takes a list of file paths, opens '
+          'all of them for writing using contextlib.ExitStack, and returns '
+          'the list of file handles. If any open fails, all previously '
+          'opened files must be closed automatically. Do not write a '
+          'try/finally by hand.',
+        ),
+      ],
+      starterCode: '''
+from contextlib import ExitStack
+
+
+def open_files(paths):
+    # TODO: use ExitStack to open all files; clean up on any failure
+    ...
+
+
+try:
+    handles = open_files(["a.txt", "b.txt", "/root/forbidden.txt"])
+except PermissionError as exc:
+    print("failed:", exc)
+# a.txt and b.txt must be closed by the time this runs.
+''',
+      solutionCode: '''
+from contextlib import ExitStack
+
+
+def open_files(paths):
+    with ExitStack() as stack:
+        return [stack.enter_context(open(p, "w")) for p in paths]
+    # When the with block exits, all files opened so far are closed.
+    # If open() raises, ExitStack immediately closes any files already opened
+    # by earlier iterations, then propagates the exception.
+
+
+try:
+    handles = open_files(["a.txt", "b.txt", "/root/forbidden.txt"])
+except PermissionError as exc:
+    print("failed:", exc)
+# a.txt and b.txt were created, written, and closed before the exception
+# reached the caller.
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'How does ExitStack ensure earlier files are closed when a '
+              'later open() fails?',
+          expectedAnswer:
+              'ExitStack.__exit__ is called as soon as the with block is left — '
+              'including when an exception propagates. It calls __exit__ on '
+              'every context manager that was entered, in reverse order. A '
+              'file\'s __exit__ closes it, so every successfully opened file '
+              'is guaranteed to be closed.',
+        ),
+        SelfCheckQuestion(
+          question:
+              'What would happen without ExitStack, using a plain list and '
+              'a try/finally?',
+          expectedAnswer:
+              'You would need to track which files were successfully opened '
+              'and close only those, while also handling the case where '
+              'closing itself raises. ExitStack does all of this correctly '
+              'and is the standard solution for the "open N resources '
+              'atomically" problem.',
         ),
       ],
     ),
@@ -1229,5 +1480,36 @@ const List<Source> _sources = [
     description:
         'Reference for every built-in exception, including the full class '
         'hierarchy and the OSError subclasses mapped from errno values.',
+  ),
+];
+
+const List<Source> _furtherReading = [
+  Source(
+    title: 'Context Manager Types — Python Docs',
+    url: 'https://docs.python.org/3/library/contextlib.html',
+    description:
+        'Reference for contextlib.contextmanager, ExitStack, redirect_stdout, '
+        'suppress, closing, and other context manager utilities.',
+  ),
+  Source(
+    title: 'Python Exceptions: An Introduction — Real Python',
+    url: 'https://realpython.com/python-exceptions/',
+    description:
+        'Guided tour of try/except/else/finally, raising, custom exceptions, '
+        'and the EAFP vs LBYL philosophy.',
+  ),
+  Source(
+    title: 'How to Write Beautiful Python Code With Exception Handling — Real Python',
+    url: 'https://realpython.com/python-exceptions-best-practices/',
+    description:
+        'Concrete patterns: narrow try blocks, meaningful messages, structured '
+        'exception attributes, and chaining with raise ... from.',
+  ),
+  Source(
+    title: 'PEP 654 – Exception Groups and except*',
+    url: 'https://peps.python.org/pep-0654/',
+    description:
+        'The proposal introducing ExceptionGroup and except* for handling '
+        'multiple concurrent exceptions in structured concurrency.',
   ),
 ];

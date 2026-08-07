@@ -10,6 +10,9 @@ abstract class TtsEngine {
   /// 0.5 - 2.0, the same range as the playback speed it mirrors.
   Future<void> setSpeechRate(double rate);
 
+  /// 0.5 - 2.0 is the range engines typically accept; 1.0 is the voice's own.
+  Future<void> setPitch(double pitch);
+
   Future<void> speak(String text);
 
   Future<void> stop();
@@ -35,6 +38,11 @@ class FlutterTtsEngine implements TtsEngine {
   @override
   Future<void> setSpeechRate(double rate) async {
     await _engine.setSpeechRate(rate);
+  }
+
+  @override
+  Future<void> setPitch(double pitch) async {
+    await _engine.setPitch(pitch);
   }
 
   @override

@@ -15,6 +15,7 @@ import '../widgets/icon_mapping.dart';
 import '../widgets/lesson_row.dart';
 import '../widgets/page_body.dart';
 import '../widgets/section_header.dart';
+import '../widgets/today_dashboard.dart';
 
 /// The Topics section of the shell.
 ///
@@ -79,6 +80,8 @@ class _TopicListScreenState extends State<TopicListScreen> {
     final List<Topic> topics = context.watch<LessonLibraryProvider>().topics;
 
     return <Widget>[
+      const SliverToBoxAdapter(child: TodayDashboard()),
+      const SliverGap(AppSpacing.xl),
       if (topics.isEmpty)
         const SliverToBoxAdapter(
           child: EmptyState(

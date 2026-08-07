@@ -14,13 +14,14 @@ const Lesson neuralNetworksLesson = Lesson(
       'Neurons, layers, weights and non-linearity — how stacking weighted sums '
       'produces a model that can represent curves, and why the activation '
       'function is the part that makes it work.',
-  estimatedMinutes: 28,
+  estimatedMinutes: 35,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -706,6 +707,72 @@ print(torch.softmax(logits, dim=1).sum(dim=1))   # tensor([1., 1., ...])
         ),
       ],
     ),
+    Exercise(
+      id: 'ex-nn-count-params',
+      title: 'Count the learnable parameters of a neural network',
+      prompt: [
+        ProseBlock(
+          'Given a list of layer specifications, write a function that '
+          'computes the total number of learnable parameters. Each layer '
+          'is defined by (in_features, out_features). For an n-layer MLP, '
+          'the input is the first in_features and each subsequent layer '
+          'takes the previous out_features as its input. Count both '
+          'weights and biases.',
+        ),
+      ],
+      starterCode: '''
+def count_parameters(layer_sizes):
+    """Return total weights + biases for an MLP with these layer sizes.
+
+    layer_sizes = [in_features, hidden_1, hidden_2, ..., out_features]
+    """
+    # TODO: iterate through consecutive pairs, multiply + add bias
+    ...
+
+
+# A network: 784 -> 128 -> 64 -> 10
+print(count_parameters([784, 128, 64, 10]))
+''',
+      solutionCode: '''
+def count_parameters(layer_sizes):
+    """Return total weights + biases for an MLP with these layer sizes."""
+    total = 0
+    for i in range(len(layer_sizes) - 1):
+        fan_in, fan_out = layer_sizes[i], layer_sizes[i + 1]
+        # weights: (fan_in * fan_out), biases: fan_out
+        total += fan_in * fan_out + fan_out
+    return total
+
+
+# A network: 784 -> 128 -> 64 -> 10
+n = count_parameters([784, 128, 64, 10])
+print(f"Total parameters: {n:,}")
+
+# 784*128+128 + 128*64+64 + 64*10+10
+# = 100_480 + 8_256 + 650
+# = 109,386
+
+# This is why the first layer dominates the count — it has more
+# connections than all subsequent layers combined.
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'For layer_sizes = [1000, 500, 500, 2], which layer '
+              'contributes the most parameters, and why?',
+          expectedAnswer:
+              'The first layer (1000 → 500) contributes 1000×500 + 500 = '
+              '500,500 parameters. The second layer (500 → 500) contributes '
+              '500×500 + 500 = 250,500, and the output layer (500 → 2) '
+              'contributes 500×2 + 2 = 1,002. The first layer dominates '
+              'because fan_in is largest there — each subsequent layer '
+              'takes a smaller input dimension. This is why reducing the '
+              'input dimension (via feature selection or PCA) shrinks the '
+              'model far more than tinkering with hidden widths.',
+        ),
+      ],
+    ),
   ],
 );
 
@@ -1324,5 +1391,38 @@ const List<Source> _sources = [
         'Chapter 6, "Deep Feedforward Networks", covers units, activations, '
         'architecture design and the universal approximation results in '
         'depth.',
+  ),
+];
+
+const List<Source> _furtherReading = <Source>[
+  Source(
+    title: 'Deep Learning (Goodfellow, Bengio & Courville) — Chapter 6',
+    url: 'https://www.deeplearningbook.org/contents/mlp.html',
+    description:
+        'The definitive treatment of deep feedforward networks: gradient-based '
+        'learning, hidden units, architecture design and back-propagation.',
+  ),
+  Source(
+    title: 'CS231n: Convolutional Neural Networks for Visual Recognition',
+    url: 'https://cs231n.github.io/neural-networks-1/',
+    description:
+        'Stanford\'s course notes on neural networks, with excellent '
+        'intuition for activations, loss functions and the data-driven '
+        'approach to feature learning.',
+  ),
+  Source(
+    title: 'Delving Deep into Rectifiers (He et al., 2015)',
+    url: 'https://arxiv.org/abs/1502.01852',
+    description:
+        'The paper behind He (Kaiming) initialisation and PReLU, explaining '
+        'why ReLU networks need the 2/fan_in variance scaling to avoid '
+        'vanishing signals in deep stacks.',
+  ),
+  Source(
+    title: 'Understanding the difficulty of training deep neural networks',
+    url: 'https://proceedings.mlr.press/v9/glorot10a.html',
+    description:
+        'Glorot & Bengio\'s foundational paper on Xavier initialisation, '
+        'showing why activation variance must be preserved across layers.',
   ),
 ];

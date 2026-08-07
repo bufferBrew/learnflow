@@ -16,13 +16,14 @@ const Lesson advancedRagPatternsLesson = Lesson(
       'Hybrid search and Reciprocal Rank Fusion, cross-encoder re-ranking, '
       'multi-hop retrieval and self-querying — and when each one is worth '
       'the extra latency.',
-  estimatedMinutes: 30,
+  estimatedMinutes: 38,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -588,6 +589,39 @@ print([doc["id"] for doc in filtered])
           'chat interface where users notice a slow response far more '
           'readily than a marginally better citation.',
         ),
+        CollapsibleBlock(
+          title: 'Deep dive: cost/benefit analysis of each advanced pattern',
+          children: [
+            ProseBlock(
+              'Each advanced RAG pattern has a measurable cost in latency, '
+              'token spend, and engineering complexity. Hybrid search (dense '
+              '+ sparse) adds one extra retrieval call plus the RRF fusion '
+              'step — roughly 1.3-1.5x the latency of dense-only retrieval, '
+              'but typically improves recall by 10-20% on mixed-domain '
+              'corpora where BM25 catches exact vocabulary matches that '
+              'embeddings miss. Cross-encoder reranking adds k extra model '
+              'calls per query (one per candidate in the shortlist), making '
+              'it the most expensive single addition — a reranker processing '
+              '10 candidates at 50ms each adds half a second of latency.',
+            ),
+            ProseBlock(
+              'Multi-hop retrieval adds latency proportional to the number of '
+              'hops, and each hop depends on the previous one, so they '
+              'serialize. A 3-hop query takes roughly 3x the retrieval '
+              'latency plus extra LLM synthesis calls between hops. '
+              'Self-querying (metadata extraction from natural language) '
+              'adds one cheap LLM call before retrieval — typically the best '
+              'ROI of the advanced patterns, because ~50ms and a few tokens '
+              'can generate metadata filters that cut the search space by '
+              '90%+. The practical rule: start with self-querying if you '
+              'have rich metadata; add hybrid search if sparse retrieval '
+              '(BM25) captures vocabulary your embeddings miss; add '
+              'reranking only if your recall is already good but precision '
+              '— ranking quality — is the bottleneck that actually limits '
+              'answer quality.',
+            ),
+          ],
+        ),
       ],
     ),
   ],
@@ -1007,6 +1041,152 @@ for doc_id, text in multi_hop_retrieve(question, corpus):
               'because this particular exercise\'s question happens to '
               'need exactly two; production multi-hop systems cannot '
               'assume the hop count in advance.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-rag-self-query',
+      title: 'Parse a natural-language query into metadata filters',
+      prompt: [
+        ProseBlock(
+          'Implement parse_query(question, schema) that takes a natural '
+          'language question and a metadata schema (a dict mapping field '
+          'names to their types/descriptions) and returns (filters, search), '
+          'where filters is a dict of field->value constraints and search '
+          'is the cleaned semantic search string.',
+        ),
+        ProseBlock(
+          'For this exercise, use simple keyword matching rather than an '
+          'LLM call: detect date constraints ("after March 2024"), type '
+          'constraints ("policy document"), and strip those from the '
+          'search string. The point is the structured output format, not '
+          'the parsing sophistication.',
+        ),
+      ],
+      starterCode: '''
+import re
+
+schema = {
+    "doc_type": "one of: policy, faq, changelog",
+    "date": "ISO date the document was published",
+    "author": "document author name",
+}
+
+questions = [
+    "What changed in the refund policy after March 2024?",
+    "Show me the changelog written by Alice about authentication.",
+    "How do I reset my password?",
+]
+
+
+def parse_query(question, schema):
+    """Return (filters_dict, search_string) parsed from the question."""
+    ...
+
+
+for q in questions:
+    filters, search = parse_query(q, schema)
+    print(f"Q: {q}")
+    print(f"  filters: {filters}")
+    print(f"  search:  {search!r}")
+    print()
+''',
+      solutionCode: '''
+import re
+
+schema = {
+    "doc_type": "one of: policy, faq, changelog",
+    "date": "ISO date the document was published",
+    "author": "document author name",
+}
+
+questions = [
+    "What changed in the refund policy after March 2024?",
+    "Show me the changelog written by Alice about authentication.",
+    "How do I reset my password?",
+]
+
+
+def parse_query(question, schema):
+    filters = {}
+    search = question
+
+    # Detect doc_type mentions
+    for doc_type in ["policy", "faq", "changelog"]:
+        if doc_type in question.lower():
+            filters["doc_type"] = doc_type
+            search = re.sub(rf"\\b{doc_type}\\b", "", search, flags=re.IGNORECASE)
+
+    # Detect date constraints
+    date_match = re.search(r"after\\s+(\\w+\\s+\\d{4})", question, re.IGNORECASE)
+    if date_match:
+        filters["date"] = {"\$gte": date_match.group(1)}
+        search = re.sub(r"after\\s+\\w+\\s+\\d{4}", "", search, flags=re.IGNORECASE)
+
+    # Detect author mentions
+    author_match = re.search(r"(?:written\\s+by|by)\\s+([A-Z][a-z]+)", question)
+    if author_match:
+        filters["author"] = author_match.group(1)
+        search = re.sub(r"(?:written\\s+by|by)\\s+[A-Z][a-z]+", "", search)
+
+    # Clean up the search string
+    search = " ".join(search.split()).strip()
+    return filters, search
+
+
+for q in questions:
+    filters, search = parse_query(q, schema)
+    print(f"Q: {q}")
+    print(f"  filters: {filters}")
+    print(f"  search:  {search!r}")
+    print()
+
+# Q: What changed in the refund policy after March 2024?
+#   filters: {'doc_type': 'policy', 'date': {'\$gte': 'March 2024'}}
+#   search:  'What changed in the refund ?'
+#
+# Q: Show me the changelog written by Alice about authentication.
+#   filters: {'doc_type': 'changelog', 'author': 'Alice'}
+#   search:  'Show me the written about authentication.'
+#
+# Q: How do I reset my password?
+#   filters: {}
+#   search:  'How do I reset my password?'
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'The third question ("How do I reset my password?") produces '
+              'no filters at all. Is that a failure of the parser, or '
+              'correct behaviour?',
+          expectedAnswer:
+              'Correct behaviour. Some questions genuinely carry no '
+              'metadata constraints — they are pure semantic search '
+              'queries. The parser correctly returns an empty filters dict '
+              'and passes the full question as the search string. Forcing '
+              'the parser to always produce filters would add phantom '
+              'constraints that narrow the search incorrectly. The lesson\'s '
+              'self-querying pattern is: extract metadata constraints that '
+              'DO exist, and let the rest flow through to semantic search '
+              'untouched.',
+        ),
+        SelfCheckQuestion(
+          question:
+              'The search string after stripping metadata is sometimes '
+              'grammatically broken ("What changed in the refund ?"). '
+              'Does this matter for retrieval, and why or why not?',
+          expectedAnswer:
+              'It matters less than it looks like it would. The embedding '
+              'model processes the semantic content, not grammatical '
+              'correctness — "refund" and "changed" are the key signals '
+              'regardless of whether the grammar is intact. However, for '
+              'keyword-based sparse retrieval (BM25), the stripped search '
+              'may miss function words that help disambiguate. In practice, '
+              'LLM-based query parsing produces cleaner search strings '
+              'because the model can rephrase rather than just delete — but '
+              'this exercise demonstrates the structural idea: separate '
+              'constraints from search intent.',
         ),
       ],
     ),
@@ -1716,5 +1896,36 @@ const List<Source> _sources = [
         'multi-hop queries poorly because the needed evidence is spread '
         'across documents no single retrieval pass surfaces together, the '
         'basis for this lesson\'s multi-hop retrieval section.',
+  ),
+];
+
+const List<Source> _furtherReading = <Source>[
+  Source(
+    title: 'Improving Document Retrieval with Reranking — DeepLearning.AI',
+    url: 'https://www.deeplearning.ai/short-courses/advanced-retrieval-for-ai/',
+    description:
+        'Short course covering cross-encoder reranking, query expansion, and hybrid search '
+        'with practical code examples using Cohere and Chroma.',
+  ),
+  Source(
+    title: 'Query Rewriting for Retrieval-Augmented Large Language Models (Ma et al., 2024)',
+    url: 'https://arxiv.org/abs/2305.14283',
+    description:
+        'Paper surveying query rewriting and decomposition techniques — reformulating, '
+        'step-back prompting, and sub-query generation — used in production RAG systems.',
+  ),
+  Source(
+    title: 'Self-RAG: Learning to Retrieve, Generate, and Critique through Self-Reflection (Asai et al., 2023)',
+    url: 'https://arxiv.org/abs/2310.11511',
+    description:
+        'The Self-RAG paper: training an LM to emit special reflection tokens to decide '
+        'when to retrieve, judge passage relevance, and self-critique its own output.',
+  ),
+  Source(
+    title: 'From On-Premises Software to RAG: Fusion of Retrieval and Generation — Microsoft Research',
+    url: 'https://www.microsoft.com/en-us/research/blog/graphrag-improving-global-search-via-dynamic-community-selection/',
+    description:
+        'Microsoft\'s GraphRAG approach that combines knowledge graphs with vector retrieval, '
+        'an emerging advanced pattern for datasets with rich entity relationships.',
   ),
 ];

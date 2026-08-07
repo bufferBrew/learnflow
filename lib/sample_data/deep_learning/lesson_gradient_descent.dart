@@ -14,13 +14,14 @@ const Lesson gradientDescentLesson = Lesson(
       'The loss landscape, the update rule, the learning rate, batch sizes and '
       'momentum — the search procedure that turns a randomly initialised '
       'network into a trained one.',
-  estimatedMinutes: 30,
+  estimatedMinutes: 37,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -382,6 +383,64 @@ for epoch in range(10):
               'doubles the number of updates per epoch, which is why batch '
               'size and learning rate have to be tuned together: a smaller '
               'batch is a noisier gradient taken more often.',
+        ),
+        CollapsibleBlock(
+          title: 'Deep dive: learning rate schedules and warmup',
+          children: [
+            ProseBlock(
+              'A constant learning rate is rarely the final answer because '
+              'the needs of training change over time. Early on, the weights '
+              'are random and the gradients are large and poorly aligned; a '
+              'large step in the wrong direction from an untrained state can '
+              'send the model into a region of the loss landscape from which '
+              'it never recovers. Late in training, the model is near a '
+              'minimum and needs to settle rather than bounce across it.',
+            ),
+            ProseBlock(
+              '**Warmup** addresses the early danger by starting the learning '
+              'rate near zero and linearly increasing it to the target value '
+              'over the first few hundred or thousand steps. This lets the '
+              'model find a reasonable orientation before taking full-size '
+              'steps. Warmup is essentially mandatory for transformers and '
+              'large models trained from scratch — without it, the first few '
+              'updates often produce gradient spikes that destabilise the '
+              'entire run.',
+            ),
+            ProseBlock(
+              '**Decay schedules** handle the late phase. Step decay drops '
+              'the learning rate by a fixed factor (often 0.1) at predefined '
+              'epoch milestones. Cosine annealing smoothly decreases the '
+              'rate from its initial value to near zero following a cosine '
+              'curve, often with restarts that jump back to the initial '
+              'rate to explore a different basin. The combination of warmup '
+              'plus cosine decay is the default in essentially every modern '
+              'training recipe — it is not an advanced technique; it is the '
+              'baseline.',
+            ),
+            CodeBlock(
+              language: 'python',
+              code: '''
+import numpy as np
+
+def cosine_schedule(step, total_steps, lr_init=1e-3, lr_final=1e-5):
+    """Cosine annealing: smooth decay from lr_init to lr_final."""
+    progress = step / total_steps
+    return lr_final + 0.5 * (lr_init - lr_final) * (1 + np.cos(np.pi * progress))
+
+def warmup_cosine(step, warmup_steps, total_steps, lr_init=1e-3):
+    """Warmup then cosine decay."""
+    if step < warmup_steps:
+        return lr_init * step / warmup_steps    # linear ramp
+    return cosine_schedule(step - warmup_steps,
+                           total_steps - warmup_steps, lr_init)
+
+# Print the schedule: tiny at step 0, ramps up, then decays to near zero.
+for s in [0, 50, 100, 200, 500, 1000, 1500, 1999]:
+    lr = warmup_cosine(s, warmup_steps=100, total_steps=2000)
+    print(f"step {s:4d}  lr={lr:.6f}")
+''',
+            ),
+          ],
         ),
       ],
     ),
@@ -831,6 +890,93 @@ print(steps_to(1e-4, beta=0.25))
               'steepest direction while the shallow ones need far bigger steps. '
               'That is the narrow-valley case, and it is what real loss '
               'landscapes look like.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-gd-lr-range',
+      title: 'Find the largest stable learning rate',
+      prompt: [
+        ProseBlock(
+          'For a one-parameter quadratic loss L(w) = (w - 3)² + 2, write '
+          'a binary search that finds the largest learning rate under '
+          'which gradient descent still converges. Convergence = the loss '
+          'after 100 steps is within 0.01 of the minimum (2.0). Start by '
+          'testing rates from 0.001 to 2.0.',
+        ),
+      ],
+      starterCode: '''
+def loss(w):
+    return (w - 3.0) ** 2 + 2.0
+
+
+def grad(w):
+    return 2.0 * (w - 3.0)
+
+
+def converges(lr, steps=100, tol=0.01):
+    """Return True if GD converges with this learning rate."""
+    w = -1.0   # start far from the minimum at w=3
+    # TODO: run 'steps' iterations with this lr, check final loss
+    ...
+
+
+# TODO: find the largest stable learning rate
+# Hint: the theoretical threshold is 1.0 (since curvature a=2 =>
+# |1 - lr*a| < 1 => lr < 1.0)
+print("Largest stable lr:", ...)
+''',
+      solutionCode: '''
+def loss(w):
+    return (w - 3.0) ** 2 + 2.0
+
+
+def grad(w):
+    return 2.0 * (w - 3.0)
+
+
+def converges(lr, steps=100, tol=0.01):
+    """Return True if GD converges with this learning rate."""
+    w = -1.0
+    for _ in range(steps):
+        w = w - lr * grad(w)
+        if abs(w) > 1e6:        # diverged
+            return False
+    return abs(loss(w) - 2.0) < tol
+
+
+# Binary search for the largest stable learning rate.
+lo, hi = 0.001, 2.0
+for _ in range(30):
+    mid = (lo + hi) / 2
+    if converges(mid):
+        lo = mid
+    else:
+        hi = mid
+
+print(f"Largest stable lr: {lo:.4f}")    # ~0.9999 (theoretical: 1.0)
+
+# The 1 - lr*a factor: at lr=0.9999, |1 - 0.9999*2| = 0.9998 < 1 ✓
+# At lr=1.0001, |1 - 1.0001*2| = 1.0002 > 1 → diverges
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'Why does the stable range shrink as the curvature of the '
+              'loss increases, and what does that mean for deep networks?',
+          expectedAnswer:
+              'The convergence condition is |1 - lr * a| < 1 where a is '
+              'the second derivative (curvature). As a grows, the factor '
+              'grows faster with lr, shrinking the stable band. In real '
+              'networks, different parameters have different effective '
+              'curvatures — some directions are steep (high a), others '
+              'shallow (low a). The learning rate must be small enough '
+              'for the steepest direction, which means the shallow '
+              'directions converge painfully slowly. This is exactly why '
+              'momentum and adaptive methods like Adam exist: they apply '
+              'different effective step sizes to different parameters '
+              'based on the curvature observed so far.',
         ),
       ],
     ),
@@ -1436,5 +1582,40 @@ const List<Source> _sources = [
     description:
         'The original Adam paper, giving the moment estimates and bias '
         'correction summarised in the deep dive on adaptive learning rates.',
+  ),
+];
+
+const List<Source> _furtherReading = <Source>[
+  Source(
+    title: 'An overview of gradient descent optimization algorithms',
+    url: 'https://arxiv.org/abs/1609.04747',
+    description:
+        'Sebastian Ruder\'s comprehensive survey of SGD variants: momentum, '
+        'NAG, Adagrad, Adadelta, RMSprop and Adam, with intuitive '
+        'explanations and the mathematics behind each.',
+  ),
+  Source(
+    title: 'Deep Double Descent (Belkin et al., 2019)',
+    url: 'https://arxiv.org/abs/1912.02292',
+    description:
+        'Shows that larger models can perform better after the interpolation '
+        'threshold — complicating the classical bias-variance picture of '
+        'overfitting this lesson works within.',
+  ),
+  Source(
+    title: 'Cyclical Learning Rates for Training Neural Networks',
+    url: 'https://arxiv.org/abs/1506.01186',
+    description:
+        'Leslie Smith\'s paper introducing cyclical learning rates and the '
+        'LR range test, a practical method for finding a good learning '
+        'rate without exhaustive search.',
+  ),
+  Source(
+    title: 'Why Momentum Really Works — Distill.pub',
+    url: 'https://distill.pub/2017/momentum/',
+    description:
+        'Interactive visualisation of gradient descent with and without '
+        'momentum, showing how the velocity buffer smooths oscillation '
+        'in narrow valleys and accelerates along consistent directions.',
   ),
 ];

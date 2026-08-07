@@ -20,18 +20,6 @@ correct and unit-tested against synthetic lessons
 distinction ever matters, `Lesson` needs an explicit `availableModes` field and
 `hasMode` should read that instead of inferring from emptiness.
 
-## Search is not debounced
-
-`ShellSearchField` calls `SearchFilterProvider.setQuery` on every keystroke, and
-`TopicListScreen` re-walks the whole catalogue on every notify. That is free at
-the current size (one topic, one lesson) and stays fine into the low thousands
-of lessons.
-
-**Breaks when:** the library moves off in-memory Dart to anything with I/O, or
-grows large enough that a full linear scan per keystroke drops frames. The fix
-is a `Timer`-based debounce inside `_ShellSearchFieldState`; no other code
-changes.
-
 ## TOML blocks are highlighted with the `properties` grammar
 
 `lib/widgets/code_block.dart:14` — `highlight` 0.7.0 resolves `toml` to its `ini`
@@ -51,10 +39,20 @@ content starts leaning on the syntax above. Then delete the `_grammarAliases`
 entry and the `toml` case in `test/code_block_highlight_test.dart` goes back to
 asserting the native grammar.
 
-## Search, filter, bookmark, recent and resume state is session-only
+## Search filters are session-only; everything else now persists
 
-Every one of these providers is a plain in-memory `ChangeNotifier` with no
-persistence — closing the app loses all of it. This is pre-existing and
-intentional; the provider doc comments already flag persistence as a later
-milestone. Noted here because the Bookmarks and Recent screens now look like
-durable storage to a user, and they are not.
+`SearchFilterProvider` (the query text and facet chips) is still a plain
+in-memory `ChangeNotifier` — closing the app drops whatever was typed, which is
+the right behaviour for a transient query. Progress, bookmarks, recently
+viewed, resume points, theme, best Play-mode stars, streaks and achievements
+are now backed by `SharedPreferences` (see each provider's `_load`/`_save`).
+
+Every provider takes persistence as an optional constructor parameter that
+defaults to `null` — omitting it (every test's default, and any future
+provider constructed bare) keeps that provider exactly as in-memory as before,
+so no test had to change to accommodate this. Only `main.dart` supplies a real
+`SharedPreferences` instance.
+
+**Breaks when:** a provider gains a field that should survive a restart but
+its author forgets the corresponding `_save()` call — nothing enforces the
+pairing beyond code review.

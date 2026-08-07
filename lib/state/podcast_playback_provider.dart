@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../models/podcast.dart';
+import 'chime_player.dart';
 import 'tts_engine.dart';
 
 /// Whether the transport speaks the transcript with a real voice, or only
@@ -19,8 +20,9 @@ enum PlaybackMode { tts, simulated }
 /// drops [mode] to [PlaybackMode.simulated] and playback carries on exactly
 /// as it always did, timing only.
 class PodcastPlaybackProvider extends ChangeNotifier {
-  PodcastPlaybackProvider({TtsEngine? ttsEngine})
-    : _ttsEngine = ttsEngine ?? FlutterTtsEngine();
+  PodcastPlaybackProvider({TtsEngine? ttsEngine, ChimePlayer? chimePlayer})
+    : _ttsEngine = ttsEngine ?? FlutterTtsEngine(),
+      _chimePlayer = chimePlayer ?? AudioPlayersChimePlayer();
 
   static const double minSpeed = 0.5;
   static const double maxSpeed = 2.0;
@@ -30,7 +32,7 @@ class PodcastPlaybackProvider extends ChangeNotifier {
   static const List<double> speedSteps = <double>[
     0.5,
     0.75,
-    0.85,
+    0.8,
     1.0,
     1.25,
     1.5,
@@ -49,17 +51,20 @@ class PodcastPlaybackProvider extends ChangeNotifier {
 
   Timer? _ticker;
   final TtsEngine _ttsEngine;
+  final ChimePlayer _chimePlayer;
   // Fire-and-forget TTS calls can settle after dispose(); ChangeNotifier
   // throws on notifyListeners() past that point, so every async completion
   // that might notify checks this first.
   bool _disposed = false;
+  // Bumped by every new utterance, so an older one can tell it was replaced.
+  int _utterance = 0;
 
   String? _lessonId;
   PodcastScript? _script;
   PodcastVariant _variant = PodcastVariant.standard;
   int _currentTimeMs = 0;
   bool _isPlaying = false;
-  double _speed = 0.85;
+  double _speed = 0.8;
   PlaybackMode _mode = PlaybackMode.tts;
 
   String? get lessonId => _lessonId;
@@ -117,6 +122,7 @@ class PodcastPlaybackProvider extends ChangeNotifier {
     // Pressing play at the end replays from the top rather than doing nothing.
     if (_currentTimeMs >= durationMs) _currentTimeMs = 0;
     _isPlaying = true;
+    unawaited(_chimePlayer.playIntroChime());
     _startTicker();
     _syncSpeech();
     notifyListeners();
@@ -270,6 +276,9 @@ class PodcastPlaybackProvider extends ChangeNotifier {
     if (next >= total) {
       _currentTimeMs = total;
       _isPlaying = false;
+      // Only the script playing itself out earns the sign-off; scrubbing to
+      // the end never comes through here.
+      unawaited(_chimePlayer.playOutroChime());
       _stopTicker();
     } else {
       _currentTimeMs = next;
@@ -289,29 +298,94 @@ class PodcastPlaybackProvider extends ChangeNotifier {
   }
 
   Future<void> _speakCurrentSegment() async {
+    // A segment is now spoken as a run of chunks, so a superseded utterance
+    // can still be part-way through its own line when the next one starts —
+    // and the state checks below cannot tell the two apart when both are on
+    // the same segment. Only the newest utterance keeps talking.
+    final int utterance = ++_utterance;
     await _stopSpeaking();
     if (_mode == PlaybackMode.simulated || !_isPlaying) return;
     final PodcastSegment? segment = currentSegment;
     if (segment == null) return;
 
-    // A short pause between segments keeps the conversation from sounding
-    // rushed — 300ms is roughly a natural breath or turn-taking gap.
-    await Future<void>.delayed(const Duration(milliseconds: 300));
+    // A pause before a new voice takes over keeps the conversation from
+    // sounding rushed — 800ms is roughly a natural turn-taking gap.
+    await Future<void>.delayed(const Duration(milliseconds: 800));
 
-    // Re-check state after the pause: playback might have been paused or
-    // the position might have moved to a different segment while waiting.
-    if (_mode == PlaybackMode.simulated || !_isPlaying) return;
-    if (currentSegment?.id != segment.id) return;
+    // A guest reading a little higher than the host is what makes two
+    // synthesised voices read as a conversation rather than one narrator
+    // doing both halves.
+    final double pitch = segment.speaker.toLowerCase() == 'guest' ? 1.15 : 1.0;
+    // 0.75–0.85 off the chosen speed, keyed off the segment id rather than a
+    // random number: no two neighbouring lines share a metronome, but any one
+    // line always reads at the same rate.
+    final double variation =
+        0.75 + ((segment.id.hashCode.abs() % 1000) / 1000.0) * 0.10;
+    final double effectiveRate = _speed * variation;
 
-    try {
-      await _ttsEngine.setSpeechRate(_speed);
-      await _ttsEngine.speak(segment.text);
-    } catch (_) {
-      // No engine on this platform, or a call the web implementation does
-      // not support: the transcript-synced timing already running is a
-      // complete experience on its own, so playback just keeps going.
-      _switchToSimulated();
+    for (final String chunk in _chunksOf(segment.text)) {
+      // Re-checked before every chunk, not just once per segment: a pause or
+      // a seek mid-utterance must not talk through the rest of the line.
+      if (utterance != _utterance) return;
+      if (_mode == PlaybackMode.simulated || !_isPlaying) return;
+      if (currentSegment?.id != segment.id) return;
+
+      try {
+        await _ttsEngine.setPitch(pitch);
+        await _ttsEngine.setSpeechRate(effectiveRate);
+        await _ttsEngine.speak(chunk);
+      } catch (_) {
+        // No engine on this platform, or a call the web implementation does
+        // not support: the transcript-synced timing already running is a
+        // complete experience on its own, so playback just keeps going.
+        _switchToSimulated();
+        return;
+      }
+      await Future<void>.delayed(_pauseAfter(chunk));
     }
+  }
+
+  /// Splits [text] where a speaker would draw breath — at commas, at sentence
+  /// ends and at paragraph breaks — keeping the mark on the chunk it closes so
+  /// [_pauseAfter] can read it back.
+  static List<String> _chunksOf(String text) {
+    final List<String> chunks = <String>[];
+    final StringBuffer current = StringBuffer();
+
+    void close() {
+      final String chunk = current.toString();
+      current.clear();
+      if (chunk.trim().isNotEmpty) {
+        chunks.add(chunk.trimLeft());
+      } else if (chunks.isNotEmpty) {
+        // A break with no words of its own (a paragraph following a full
+        // stop) lengthens the previous chunk's pause instead of becoming one.
+        chunks[chunks.length - 1] = chunks.last + chunk;
+      }
+    }
+
+    for (int i = 0; i < text.length; i++) {
+      if (text.startsWith('\n\n', i)) {
+        current.write('\n\n');
+        i++;
+        close();
+        continue;
+      }
+      current.write(text[i]);
+      if (',.?!'.contains(text[i])) close();
+    }
+    close();
+    return chunks;
+  }
+
+  /// How long to rest after [chunk], from the mark it ends on.
+  static Duration _pauseAfter(String chunk) {
+    if (chunk.endsWith('\n\n')) return const Duration(milliseconds: 600);
+    if (chunk.endsWith(',')) return const Duration(milliseconds: 200);
+    if (chunk.endsWith('.') || chunk.endsWith('?') || chunk.endsWith('!')) {
+      return const Duration(milliseconds: 400);
+    }
+    return Duration.zero;
   }
 
   Future<void> _stopSpeaking() async {
@@ -338,6 +412,9 @@ class PodcastPlaybackProvider extends ChangeNotifier {
     // that path can call _switchToSimulated, and notifyListeners on a
     // disposed ChangeNotifier throws.
     unawaited(_ttsEngine.stop().catchError((_) {}));
+    // The chime player holds a platform-channel audio handle of its own, which
+    // nothing else would ever release.
+    unawaited(_chimePlayer.dispose().catchError((_) {}));
     super.dispose();
   }
 }

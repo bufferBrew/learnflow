@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/game.dart';
 
@@ -17,6 +21,18 @@ class GameStars {
   final int total;
 
   bool get hasPlayed => total > 0;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'stars': stars,
+    'correct': correct,
+    'total': total,
+  };
+
+  factory GameStars.fromJson(Map<String, dynamic> json) => GameStars(
+    stars: json['stars'] as int,
+    correct: json['correct'] as int,
+    total: json['total'] as int,
+  );
 }
 
 /// Tracks Play-mode session state: which lesson is loaded, which game is open,
@@ -27,6 +43,13 @@ class GameStars {
 /// tab mid-session and come back to the same game and score, and their best
 /// stars survive navigating away entirely.
 class GamePlayProvider extends ChangeNotifier {
+  GamePlayProvider({this._prefs}) {
+    _load();
+  }
+
+  static const String _prefsKey = 'learnflow.game_stars.v1';
+
+  final SharedPreferences? _prefs;
   String? _lessonId;
   List<Game> _games = const <Game>[];
   int? _currentIndex;
@@ -97,6 +120,7 @@ class GamePlayProvider extends ChangeNotifier {
         correct: correctCount,
         total: _games.length,
       );
+      _save();
     }
   }
 
@@ -122,5 +146,33 @@ class GamePlayProvider extends ChangeNotifier {
     if (fraction >= 2 / 3) return 2;
     if (fraction > 0) return 1;
     return 0;
+  }
+
+  void _load() {
+    final prefs = _prefs;
+    if (prefs == null) return;
+    final String? raw = prefs.getString(_prefsKey);
+    if (raw == null) return;
+    try {
+      final Map<String, dynamic> json =
+          jsonDecode(raw) as Map<String, dynamic>;
+      for (final entry in json.entries) {
+        _bestByLessonId[entry.key] = GameStars.fromJson(
+          entry.value as Map<String, dynamic>,
+        );
+      }
+    } catch (_) {
+      // Corrupt data — start fresh rather than crash on boot.
+    }
+  }
+
+  void _save() {
+    final prefs = _prefs;
+    if (prefs == null) return;
+    final Map<String, dynamic> json = <String, dynamic>{
+      for (final entry in _bestByLessonId.entries)
+        entry.key: entry.value.toJson(),
+    };
+    unawaited(prefs.setString(_prefsKey, jsonEncode(json)));
   }
 }

@@ -15,13 +15,14 @@ const Lesson whatIsAiLesson = Lesson(
       'How learning from data differs from writing rules, and the vocabulary — '
       'features, labels, models, generalisation — the rest of the field is '
       'built on.',
-  estimatedMinutes: 24,
+  estimatedMinutes: 31,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -331,6 +332,94 @@ for n in sizes:
               'probability, revenue — based on which error hurts more. The '
               'metric is a product decision wearing a statistical costume.',
         ),
+        ProseBlock(
+          'In production systems, the most reliable pattern is to separate '
+          'offline evaluation from online monitoring. Offline metrics — '
+          'precision, recall, MAE — tell you whether the model learned what '
+          'you intended. Online metrics — click-through rate, customer '
+          'satisfaction, revenue per user — tell you whether what you '
+          'intended was the right thing to optimise in the first place. The '
+          'two sets routinely diverge: a model that perfectly predicts '
+          'clicks may drive users away, and a model with mediocre offline '
+          'scores may be the one users actually prefer.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+# Offline: did the model learn the right labels?
+from sklearn.metrics import precision_score, recall_score
+
+y_val = [0, 1, 0, 1, 0, 1, 0]   # ground truth
+y_hat = [0, 1, 1, 1, 0, 1, 0]   # model predictions
+
+print("Precision:", precision_score(y_val, y_hat))  # 0.75
+print("Recall:   ", recall_score(y_val, y_hat))     # 1.0
+
+# Online: did the model drive the right behaviour?
+# These are measured from production logs, not from a held-out dataset.
+# clicks / impressions, retention after 30 days, reported issues per user...
+# The offline numbers are a filter. The online numbers are the truth.
+''',
+          caption:
+              'Offline metrics gate deployment; online metrics measure '
+              'success. Neither alone tells the full story.',
+        ),
+        CollapsibleBlock(
+          title: 'Deep dive: the i.i.d. assumption and why it fails',
+          children: [
+            ProseBlock(
+              'Nearly every machine learning method assumes the training '
+              'data and the deployment data are drawn independently from '
+              'the same distribution — the i.i.d. (independent and '
+              'identically distributed) assumption. It is baked into the '
+              'definition of generalisation: the test error is an estimate '
+              'of performance on future examples from that same '
+              'distribution. If the distribution changes, that estimate is '
+              'no longer valid — and distributions always change.',
+            ),
+            ProseBlock(
+              'The taxonomy of distribution shift has three branches. '
+              '**Covariate shift** means the input distribution changes: '
+              'your users start uploading photos from a new phone model '
+              'with different colour profiles. **Label shift** means the '
+              'class proportions change: a fraud rate that was 0.1% shoots '
+              'to 3% during a coordinated attack. **Concept drift** means '
+              'the relationship itself changes: what counted as a relevant '
+              'search result in 2019 is not what counts in 2026. All three '
+              'are common and all three silently degrade a frozen model.',
+            ),
+            ProseBlock(
+              'The operational answer is monitoring. Track the distribution '
+              'of inputs (feature drift), the distribution of predictions '
+              '(output drift), and — when you can afford the labels — the '
+              'accuracy on a delayed holdout that arrives weeks later. Set '
+              'thresholds on these that trigger a retraining pipeline. The '
+              'more expensive the error, the more often you check: a medical '
+              'imaging model is monitored daily; a movie recommendation '
+              'engine, weekly. The principle is always the same: assume the '
+              'world will shift, because it always does, and build the '
+              'measurement to catch it.',
+            ),
+            CodeBlock(
+              language: 'python',
+              code: '''
+# Toy drift monitor: compare feature means between training and live data.
+import numpy as np
+
+train_mean = X_train.mean(axis=0)           # shape (n_features,)
+live_mean = X_live_sample.mean(axis=0)
+
+drift = np.abs(train_mean - live_mean) / (train_mean.std() + 1e-8)
+# drift[i] > 2.0 => feature i has shifted more than two standard deviations
+
+# In practice, use a proper test (Kolmogorov-Smirnov for continuous cols,
+# chi-squared for categorical) and trigger an alert, not a panic.
+# Not every shift hurts predictions — but not measuring it guarantees
+# you learn about it when users complain.
+''',
+            ),
+          ],
+        ),
       ],
     ),
   ],
@@ -593,6 +682,206 @@ print("model recall on the positive class:", recall)
               'into the prediction and produces an optimistic comparison — the '
               'same leakage rule that applies to scaling, imputation and any '
               'other fitted preprocessing step.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-ai-learning-curves-interpret',
+      title: 'Read the learning curves',
+      prompt: [
+        ProseBlock(
+          'Below are per-epoch training and validation losses from two '
+          'separate training runs. Write a function that diagnoses each '
+          'run: return "overfitting", "underfitting", "healthy" or '
+          '"diverging", along with the epoch number of the best validation '
+          'loss.',
+        ),
+        ProseBlock(
+          'Overfitting: val loss rises >0.03 above its minimum by the '
+          'final epoch. Underfitting: both train and val loss are >0.4 at '
+          'epoch 10 and the gap is <0.05. Diverging: loss increases from '
+          'the very first epoch. Otherwise healthy.',
+        ),
+      ],
+      starterCode: '''
+run_a_train = [1.82, 1.15, 0.74, 0.51, 0.37, 0.28, 0.22, 0.18, 0.15, 0.13]
+run_a_val   = [1.85, 1.22, 0.82, 0.61, 0.55, 0.58, 0.64, 0.71, 0.79, 0.88]
+
+run_b_train = [2.91, 2.88, 2.86, 2.85, 2.84, 2.84, 2.83, 2.83, 2.82, 2.82]
+run_b_val   = [2.93, 2.90, 2.88, 2.87, 2.86, 2.86, 2.85, 2.85, 2.84, 2.84]
+
+
+def diagnose(train, val, rise_tol=0.03, high_loss=0.4):
+    """Return (verdict, best_epoch) for a run."""
+    # TODO: implement the diagnosis logic
+    ...
+
+
+for name, (tr, va) in [("run a", (run_a_train, run_a_val)),
+                        ("run b", (run_b_train, run_b_val))]:
+    verdict, epoch = diagnose(tr, va)
+    print(f"{name}: {verdict} (best epoch {epoch})")
+''',
+      solutionCode: '''
+run_a_train = [1.82, 1.15, 0.74, 0.51, 0.37, 0.28, 0.22, 0.18, 0.15, 0.13]
+run_a_val   = [1.85, 1.22, 0.82, 0.61, 0.55, 0.58, 0.64, 0.71, 0.79, 0.88]
+
+run_b_train = [2.91, 2.88, 2.86, 2.85, 2.84, 2.84, 2.83, 2.83, 2.82, 2.82]
+run_b_val   = [2.93, 2.90, 2.88, 2.87, 2.86, 2.86, 2.85, 2.85, 2.84, 2.84]
+
+
+def diagnose(train, val, rise_tol=0.03, high_loss=0.4):
+    """Return (verdict, best_epoch) for a run."""
+    best_val = min(val)
+    best_epoch = val.index(best_val)
+
+    # Diverging: loss climbs from the start
+    if val[-1] > val[0] + 0.5:
+        return "diverging", 0
+
+    # Overfitting: val rose meaningfully above its own minimum
+    if val[-1] - best_val > rise_tol:
+        return "overfitting", best_epoch
+
+    # Underfitting: both still high and hugging
+    if train[-1] > high_loss and abs(val[-1] - train[-1]) < rise_tol:
+        return "underfitting", best_epoch
+
+    return "healthy", best_epoch
+
+
+for name, (tr, va) in [("run a", (run_a_train, run_a_val)),
+                        ("run b", (run_b_train, run_b_val))]:
+    verdict, epoch = diagnose(tr, va)
+    print(f"{name}: {verdict} (best epoch {epoch})")
+
+# run a: overfitting (best epoch 4)  — val drops to 0.55 then climbs to 0.88
+# run b: underfitting (best epoch 9) — both curves flat near 2.8
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'Run b has both lines nearly flat and close together. What '
+              'would you change to improve it, and why?',
+          expectedAnswer:
+              'That shape is underfitting: the model does not have enough '
+              'capacity to capture the pattern, so adding more data would '
+              'not help — the error has already plateaued. Increase the '
+              'model capacity (more layers, wider layers, or a more '
+              'expressive algorithm family), add richer features, or train '
+              'for longer if the curves are still barely moving. The '
+              'diagnostic is that there is no gap to close, so the problem '
+              'is not noise — it is that the hypothesis space itself is '
+              'too constrained.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-ai-confusion-matrix',
+      title: 'Build a confusion matrix from predictions',
+      prompt: [
+        ProseBlock(
+          'Implement confusion_matrix(y_true, y_pred) that returns a dict '
+          'with keys "tp", "fp", "fn", "tn". Then compute precision, '
+          'recall and accuracy from the confusion matrix entries — not '
+          'from the raw predictions. Verify that accuracy = (tp + tn) / '
+          'total.',
+        ),
+        ProseBlock(
+          'Then explain why accuracy is a dangerous number on the '
+          'imbalanced data below, and which metric you would report '
+          'instead.',
+        ),
+      ],
+      starterCode: '''
+y_true = [0, 0, 0, 0, 0, 0, 0, 0, 0, 1]   # 90% negative
+y_pred = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]   # predict all zeros
+
+
+def confusion_matrix(y_true, y_pred):
+    """Return {"tp": ..., "fp": ..., "fn": ..., "tn": ...}"""
+    ...
+
+
+def precision(cm):
+    """TP / (TP + FP). Return 0.0 if denominator is zero."""
+    ...
+
+
+def recall(cm):
+    """TP / (TP + FN). Return 0.0 if denominator is zero."""
+    ...
+
+
+def accuracy(cm):
+    ...
+
+
+cm = confusion_matrix(y_true, y_pred)
+print(cm)
+print("precision:", precision(cm))
+print("recall:   ", recall(cm))
+print("accuracy: ", accuracy(cm))
+
+# TODO: why is accuracy misleading here?
+''',
+      solutionCode: '''
+y_true = [0, 0, 0, 0, 0, 0, 0, 0, 0, 1]   # 90% negative
+y_pred = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]   # predict all zeros
+
+
+def confusion_matrix(y_true, y_pred):
+    """Return {"tp": ..., "fp": ..., "fn": ..., "tn": ...}"""
+    tp = sum(t == 1 and p == 1 for t, p in zip(y_true, y_pred))
+    fp = sum(t == 0 and p == 1 for t, p in zip(y_true, y_pred))
+    fn = sum(t == 1 and p == 0 for t, p in zip(y_true, y_pred))
+    tn = sum(t == 0 and p == 0 for t, p in zip(y_true, y_pred))
+    return {"tp": tp, "fp": fp, "fn": fn, "tn": tn}
+
+
+def precision(cm):
+    """TP / (TP + FP)"""
+    denom = cm["tp"] + cm["fp"]
+    return cm["tp"] / denom if denom else 0.0
+
+
+def recall(cm):
+    """TP / (TP + FN)"""
+    denom = cm["tp"] + cm["fn"]
+    return cm["tp"] / denom if denom else 0.0
+
+
+def accuracy(cm):
+    total = cm["tp"] + cm["fp"] + cm["fn"] + cm["tn"]
+    return (cm["tp"] + cm["tn"]) / total
+
+
+cm = confusion_matrix(y_true, y_pred)
+print("confusion matrix:", cm)          # {"tp": 0, "fp": 0, "fn": 1, "tn": 9}
+print("precision:", precision(cm))      # 0.0  (denominator is 0, so default)
+print("recall:   ", recall(cm))         # 0.0  (missed the only positive)
+print("accuracy: ", accuracy(cm))       # 0.9
+
+# Accuracy is 90%, but the model found zero positives. The metric hides
+# the failure because 90% of the data is negative. Report precision and
+# recall on the minority class, or F1 as their harmonic mean.
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'The model scores 90% accuracy but recall is 0.0. Which '
+              'metric should drive your decision to deploy?',
+          expectedAnswer:
+              'Recall (and precision) on the positive class. Accuracy is '
+              'dominated by the majority class, so a model that never '
+              'predicts positive — which is the one thing you actually '
+              'need to find — still gets a high score. Choose the metric '
+              'based on which error costs more: if missing a positive is '
+              'worse (fraud, disease), optimise recall; if false alarms '
+              'are expensive (spam, notifications), optimise precision. '
+              'F1 balances them when neither clearly dominates.',
         ),
       ],
     ),
@@ -1208,5 +1497,46 @@ const List<Source> _sources = [
     description:
         'An overview of how machine learning relates to AI and deep learning, '
         'with the main learning paradigms and where each is applied.',
+  ),
+];
+
+const List<Source> _furtherReading = <Source>[
+  Source(
+    title:
+        'A Few Useful Things to Know About Machine Learning (Domingos, 2012)',
+    url:
+        'https://homes.cs.washington.edu/~pedrod/papers/cacm12.pdf',
+    description:
+        'Classic practitioner paper covering the folk wisdom of applied ML: '
+        'generalisation, overfitting, the curse of dimensionality, feature '
+        'engineering and why more data beats a cleverer algorithm.',
+  ),
+  Source(
+    title: 'Rules of Machine Learning — Google for Developers',
+    url:
+        'https://developers.google.com/machine-learning/guides/rules-of-ml',
+    description:
+        'Forty-three rules distilled from years of shipping ML products, '
+        'covering everything from metrics and pipelines to launch day and '
+        'post-deployment monitoring.',
+  ),
+  Source(
+    title:
+        'Understanding Machine Learning: From Theory to Algorithms '
+        '(Shalev-Shwartz & Ben-David)',
+    url: 'https://www.cs.huji.ac.il/~shais/UnderstandingMachineLearning/',
+    description:
+        'A rigorous but accessible textbook on the theory behind '
+        'generalisation, PAC learning, the bias-complexity tradeoff and '
+        'the fundamentals that underpin every practical lesson in this '
+        'chapter.',
+  ),
+  Source(
+    title: 'The Batch — by Andrew Ng (DeepLearning.AI)',
+    url: 'https://www.deeplearning.ai/the-batch/',
+    description:
+        'A weekly newsletter covering what matters in AI, from research '
+        'breakthroughs to production lessons, curated to keep the '
+        'practitioner aware of where the field is moving.',
   ),
 ];

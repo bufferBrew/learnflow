@@ -21,6 +21,7 @@ class Lesson {
     required this.review,
     required this.play,
     required this.sources,
+    this.furtherReading,
   });
 
   final String id;
@@ -38,6 +39,9 @@ class Lesson {
   final GameContent play;
 
   final List<Source> sources;
+
+  /// Curated external resources learners can explore after mastering the lesson.
+  final List<Source>? furtherReading;
 
   /// Outline entries for the sticky nav in Read mode.
   List<Section> get sections => read.sections;

@@ -247,4 +247,111 @@ void main() {
       expect(notifications, 0);
     });
   });
+
+  group('consumeLastCompletedLessonId', () {
+    test('is set only the instant a lesson reaches 100%, and only once', () {
+      final ProgressProvider progress = ProgressProvider();
+      const String id = 'l1';
+
+      progress.markRead(id);
+      progress.markPracticed(id);
+      progress.markListened(id);
+      progress.markReviewed(id);
+      expect(progress.consumeLastCompletedLessonId(), isNull);
+
+      progress.markPlayed(id);
+      expect(progress.consumeLastCompletedLessonId(), id);
+      expect(
+        progress.consumeLastCompletedLessonId(),
+        isNull,
+        reason: 'a one-shot event: read once, it is gone',
+      );
+    });
+
+    test('re-completing after un-marking does not fire again, mirroring completedAt', () {
+      final ProgressProvider progress = ProgressProvider();
+      const String id = 'l1';
+      for (final LessonMode mode in LessonMode.values) {
+        progress.setMode(id, mode, true);
+      }
+      progress.consumeLastCompletedLessonId();
+
+      // completedAt only ever records the *first* completion (see the
+      // `progress_provider_test.dart` `completedAt` group) — the celebration
+      // event follows the same rule, so it does not re-fire here.
+      progress.setMode(id, LessonMode.read, false);
+      progress.setMode(id, LessonMode.read, true);
+
+      expect(progress.consumeLastCompletedLessonId(), isNull);
+    });
+  });
+
+  group('onActivity callback', () {
+    test('fires once per mode newly marked done, not for un-marking or repeats', () {
+      int activityCount = 0;
+      final ProgressProvider progress = ProgressProvider(
+        onActivity: () => activityCount++,
+      );
+
+      progress.markRead('l1');
+      expect(activityCount, 1);
+
+      progress.setMode('l1', LessonMode.read, true); // already done: no-op
+      expect(activityCount, 1);
+
+      progress.setMode('l1', LessonMode.read, false); // un-marking: not activity
+      expect(activityCount, 1);
+
+      progress.markPracticed('l1');
+      expect(activityCount, 2);
+    });
+  });
+
+  group('review scheduling', () {
+    test('a lesson only appears in dueLessonIds after its first review', () {
+      final ProgressProvider progress = ProgressProvider(now: () => DateTime(2026, 1, 1));
+
+      expect(progress.dueLessonIds(), isEmpty);
+
+      progress.markReviewed('l1');
+
+      // Scheduled 1 day out (stage 0) — not due the moment it is reviewed.
+      expect(progress.dueLessonIds(now: DateTime(2026, 1, 1)), isEmpty);
+      expect(progress.dueLessonIds(now: DateTime(2026, 1, 2)), <String>['l1']);
+    });
+
+    test('revisiting before the due date does not push the schedule out further', () {
+      final ProgressProvider progress = ProgressProvider(now: () => DateTime(2026, 1, 1));
+      progress.markReviewed('l1'); // stage 0: due Jan 2
+
+      progress.markReviewed('l1'); // revisited same day, not due yet: no-op
+
+      expect(progress.dueLessonIds(now: DateTime(2026, 1, 2)), <String>['l1']);
+    });
+
+    test('reviewing again once due advances to the next, wider interval', () {
+      DateTime clock = DateTime(2026, 1, 1);
+      final ProgressProvider progress = ProgressProvider(now: () => clock);
+
+      progress.markReviewed('l1'); // stage 0: due Jan 2 (interval 1)
+
+      clock = DateTime(2026, 1, 2); // now due
+      progress.markReviewed('l1'); // stage 1: due Jan 5 (interval 3)
+
+      expect(progress.dueLessonIds(now: DateTime(2026, 1, 4)), isEmpty);
+      expect(progress.dueLessonIds(now: DateTime(2026, 1, 5)), <String>['l1']);
+    });
+
+    test('dueLessonIds sorts the most overdue lesson first', () {
+      DateTime clock = DateTime(2026, 1, 1);
+      final ProgressProvider progress = ProgressProvider(now: () => clock);
+
+      progress.markReviewed('later'); // due Jan 2
+      clock = DateTime(2025, 12, 30);
+      progress.markReviewed('earlier'); // due Dec 31
+
+      clock = DateTime(2026, 1, 10);
+      expect(progress.dueLessonIds(), <String>['earlier', 'later']);
+    });
+  });
 }

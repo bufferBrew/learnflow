@@ -14,13 +14,14 @@ const Lesson embeddingsLesson = Lesson(
   description:
       'Dense vector representations of words, sentences and items — from '
       'word2vec analogies to contextual vectors and semantic search.',
-  estimatedMinutes: 29,
+  estimatedMinutes: 36,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -748,6 +749,105 @@ for label, score in top_k(query, corpus):
         ),
       ],
     ),
+    Exercise(
+      id: 'ex-emb-normalize',
+      title: 'Normalize vectors and verify ranking equivalence',
+      prompt: [
+        ProseBlock(
+          'Given unnormalized document vectors, write normalize(v) that '
+          'returns the L2-normalized vector. Then show that on unit '
+          'vectors, Euclidean distance ranking and dot-product ranking '
+          'are identical. Use scipy.spatial.distance for verification.',
+        ),
+      ],
+      starterCode: '''
+import numpy as np
+
+rng = np.random.default_rng(0)
+docs = rng.normal(size=(5, 8))            # 5 documents, 8-dim embeddings
+query = rng.normal(size=(8,))
+
+
+def normalize(v):
+    """Return v / ||v||₂. Return zeros if norm is zero."""
+    ...
+
+
+def cosine_similarity(a, b):
+    ...
+
+
+def euclidean_distance(a, b):
+    return np.linalg.norm(a - b)
+
+
+# TODO: normalize all vectors, rank by dot product and Euclidean,
+# show the rankings are identical.
+...
+''',
+      solutionCode: '''
+import numpy as np
+
+rng = np.random.default_rng(0)
+docs = rng.normal(size=(5, 8))            # 5 documents, 8-dim embeddings
+query = rng.normal(size=(8,))
+
+
+def normalize(v):
+    """Return v / ||v||₂."""
+    norm = np.linalg.norm(v)
+    if norm == 0:
+        return v
+    return v / norm
+
+
+def cosine_similarity(a, b):
+    return float(a @ b / (np.linalg.norm(a) * np.linalg.norm(b)))
+
+
+def euclidean_distance(a, b):
+    return float(np.linalg.norm(a - b))
+
+
+# Normalize everything.
+docs_norm = np.array([normalize(d) for d in docs])
+query_norm = normalize(query)
+
+# Rank by dot product on unit vectors (= cosine similarity).
+dot_scores = docs_norm @ query_norm
+dot_rank = np.argsort(-dot_scores)
+
+# Rank by Euclidean distance on unit vectors.
+eucl_scores = np.array([euclidean_distance(d, query_norm) for d in docs_norm])
+eucl_rank = np.argsort(eucl_scores)
+
+print("Dot product ranking:     ", dot_rank)
+print("Euclidean distance ranking:", eucl_rank)
+assert np.array_equal(dot_rank, eucl_rank), "Rankings differ — are vectors normalized?"
+
+# ||a - b||² = ||a||² + ||b||² - 2·a·b
+# On unit vectors: = 2 - 2·a·b, so ranking by distance and dot product
+# are identical — the -2·a·b term is the only thing that varies.
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'Why normalize before indexing, and why does the dot product '
+              'become the preferred operation at scale?',
+          expectedAnswer:
+              'Normalizing means you can rank with a dot product instead '
+              'of cosine similarity (saving a division per comparison) and '
+              'with dot product instead of Euclidean distance (saving a '
+              'subtraction). At scale — millions of vectors — dot product '
+              'is the primitive that SIMD instructions and matrix '
+              'multiplication libraries accelerate best. On unit vectors, '
+              'the dot product IS the cosine similarity, and the Euclidean '
+              'ranking is identical, so normalizing at index time collapses '
+              'three metrics into one cheap operation.',
+        ),
+      ],
+    ),
   ],
 );
 
@@ -1386,5 +1486,40 @@ const List<Source> _sources = [
         'A worked walkthrough of pooling sentence embeddings and searching '
         'them with a FAISS index, the practical form of the top-k search built '
         'here.',
+  ),
+];
+
+const List<Source> _furtherReading = <Source>[
+  Source(
+    title: 'GloVe: Global Vectors for Word Representation',
+    url: 'https://nlp.stanford.edu/projects/glove/',
+    description:
+        'Pennington et al.\'s embedding method combining the strengths of '
+        'global matrix factorisation and local context windows, with '
+        'pre-trained vectors still widely used for baseline comparisons.',
+  ),
+  Source(
+    title: 'Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks',
+    url: 'https://arxiv.org/abs/1908.10084',
+    description:
+        'Reimers & Gurevych\'s paper on fine-tuning BERT so that pooled '
+        'sentence vectors are semantically meaningful — making BERT '
+        'practical for similarity search, clustering and retrieval.',
+  ),
+  Source(
+    title: 'FAISS: A Library for Efficient Similarity Search',
+    url: 'https://engineering.fb.com/2017/03/29/data-infrastructure/faiss-a-library-for-efficient-similarity-search/',
+    description:
+        'Facebook AI\'s introduction to billion-scale nearest-neighbour '
+        'search with inverted-file and HNSW indexes, directly applicable '
+        'to the semantic search pipeline built in this lesson.',
+  ),
+  Source(
+    title: 'Matryoshka Representation Learning',
+    url: 'https://arxiv.org/abs/2205.13147',
+    description:
+        'Kusupati et al.\'s technique for training embeddings where the '
+        'first 256 dimensions of a 1024-dim vector are themselves a '
+        'usable embedding, enabling flexible accuracy-efficiency tradeoffs.',
   ),
 ];

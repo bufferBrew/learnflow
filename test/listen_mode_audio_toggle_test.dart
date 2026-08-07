@@ -16,6 +16,9 @@ class _WorkingTtsEngine implements TtsEngine {
   Future<void> setSpeechRate(double rate) async {}
 
   @override
+  Future<void> setPitch(double pitch) async {}
+
+  @override
   Future<void> speak(String text) async {}
 
   @override

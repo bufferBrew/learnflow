@@ -17,13 +17,14 @@ const Lesson multiAgentSystemsLesson = Lesson(
       'orchestrator/supervisor pattern, hierarchical orchestration, debate '
       'and critique, and the coordination failures unique to systems of '
       'agents.',
-  estimatedMinutes: 30,
+  estimatedMinutes: 38,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -414,6 +415,34 @@ final_answers = debate(
               'from genuine diversity — different model families, different '
               'prompted assumptions, different sources — not from the raw '
               'number of agents in the panel.',
+        ),
+        CollapsibleBlock(
+          title: 'Deep dive: when debate fails and when it actually helps',
+          children: [
+            ProseBlock(
+              'Multi-agent debate has been studied extensively. The original '
+              '2023 paper found improvements on arithmetic and factual '
+              'reasoning. But follow-up work revealed important limits: '
+              'debate helps most when agents start from different priors '
+              '(different prompts, different knowledge cuts). When agents '
+              'share the same model and the same prompt (only differing by '
+              'the persona label), the benefit shrinks dramatically because '
+              'they tend to make the same mistakes. Genuinely different '
+              'model families (GPT + Claude + Gemini) debating each other '
+              'consistently outperforms three instances of the same model.',
+            ),
+            ProseBlock(
+              'A practical heuristic: use debate for high-stakes, verifiable '
+              'questions where a wrong answer has measurable cost, and where '
+              'the answer can be checked against ground truth. Do not use '
+              'debate as a general accuracy enhancer — the 6x token '
+              'multiplier is too expensive for routine queries. When you do '
+              'use it, make at least one debater a genuinely different '
+              'model, and give each agent a different role-based prompt '
+              '(skeptic, optimist, domain expert) rather than just cosmetic '
+              'persona names.',
+            ),
+          ],
         ),
       ],
     ),
@@ -959,6 +988,134 @@ print(debate("Should we ship the payment feature today?"))
               'different model families, different prompted assumptions, '
               'different sources of information — otherwise a bigger panel '
               'is mostly a bigger token bill for a similar failure rate.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-debate-sim',
+      title: 'Simulate a two-agent debate with revision',
+      prompt: [
+        ProseBlock(
+          'Implement debate(question, agents, rounds) where each agent is a '
+          'function that takes (question, own_answer, other_answers) and '
+          'returns a revised answer. In round 0, each agent proposes '
+          'independently (other_answers is empty). In subsequent rounds, '
+          'each agent sees every other agent\'s previous answer and can '
+          'revise or hold.',
+        ),
+        ProseBlock(
+          'Use a simple scoring function to simulate "correctness" so the '
+          'debate has a measurable outcome. Print each round\'s answers '
+          'and track whether consensus improved correctness.',
+        ),
+      ],
+      starterCode: '''
+def simple_agent(name, question, own_answer, other_answers):
+    """Stub agent: holds its answer unless it sees a more specific one."""
+    if not other_answers:
+        return own_answer
+    # If another agent's answer is longer (more specific), adopt it.
+    for other in other_answers:
+        if len(other) > len(own_answer):
+            return other
+    return own_answer
+
+
+def correctness(answer):
+    """Stub correctness: longer answers that contain '42' are correct."""
+    return 1.0 if "42" in answer and len(answer) > 10 else 0.5
+
+
+def debate(question, agents, rounds=2):
+    """Run `rounds` of debate. Return final answers dict and a trace."""
+    ...
+
+
+agents = {
+    "alice": lambda q, own, others: simple_agent("alice", q, own, others),
+    "bob": lambda q, own, others: simple_agent("bob", q, own, others),
+}
+
+initial = {
+    "alice": "The answer might be 42.",
+    "bob": "I think the answer is 42, based on the evidence.",
+}
+
+final, trace = debate("What is the answer?", agents, rounds=2)
+# Override first-round proposals:
+final = debate_with_initial("What is the answer?", agents, initial, rounds=2)
+for name, ans in final.items():
+    print(f"{name}: {ans} (correctness: {correctness(ans)})")
+''',
+      solutionCode: '''
+def simple_agent(name, question, own_answer, other_answers):
+    if not other_answers:
+        return own_answer
+    for other in other_answers:
+        if len(other) > len(own_answer):
+            return other
+    return own_answer
+
+
+def correctness(answer):
+    return 1.0 if "42" in answer and len(answer) > 10 else 0.5
+
+
+def debate(question, agents, initial_answers, rounds=2):
+    answers = dict(initial_answers)
+    trace = [(0, dict(answers))]
+
+    for r in range(1, rounds + 1):
+        next_answers = {}
+        for name, agent_fn in agents.items():
+            others = {k: v for k, v in answers.items() if k != name}
+            next_answers[name] = agent_fn(question, answers[name], list(others.values()))
+        answers = next_answers
+        trace.append((r, dict(answers)))
+
+    return answers, trace
+
+
+initial = {
+    "alice": "The answer might be 42.",
+    "bob": "I think the answer is 42, based on the evidence.",
+}
+
+final, trace = debate(
+    "What is the answer?",
+    {"alice": lambda q, o, ot: simple_agent("alice", q, o, ot),
+     "bob": lambda q, o, ot: simple_agent("bob", q, o, ot)},
+    initial,
+    rounds=2,
+)
+
+for name, ans in final.items():
+    print(f"{name}: {ans} (correctness: {correctness(ans)})")
+
+for r, answers in trace:
+    avg = sum(correctness(a) for a in answers.values()) / len(answers)
+    print(f"round {r}: avg correctness = {avg:.2f}")
+
+# Both agents converge to bob's longer answer which mentions 42 more
+# explicitly, improving average correctness.
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'In this simulation, both agents converge to the same answer '
+              'after debate. When would consensus be a danger sign rather '
+              'than a success signal?',
+          expectedAnswer:
+              'Consensus is dangerous when both agents share the same '
+              'underlying model or reasoning bias — they can confidently '
+              'agree on a wrong answer because they both made the same '
+              'mistake independently. The lesson warns about this: '
+              '"Agreement is not evidence when the agents share a blind '
+              'spot." Consensus only improves correctness when the agents '
+              'genuinely bring different perspectives, so disagreement is '
+              'the signal that drives improvement. If agents never disagree, '
+              'debate adds cost without benefit.',
         ),
       ],
     ),
@@ -1653,5 +1810,36 @@ const List<Source> _sources = [
         'and supervisor-of-supervisors hierarchies, used as the concrete '
         'framework example in this lesson\'s orchestrator and hierarchical '
         'sections.',
+  ),
+];
+
+const List<Source> _furtherReading = <Source>[
+  Source(
+    title: 'AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation (Wu et al., 2023)',
+    url: 'https://arxiv.org/abs/2308.08155',
+    description:
+        'Microsoft\'s AutoGen framework paper describing multi-agent conversation patterns, '
+        'code generation with human feedback, and the "teachable agent" concept.',
+  ),
+  Source(
+    title: 'ChatDev: Communicative Agents for Software Development (Qian et al., 2023)',
+    url: 'https://arxiv.org/abs/2307.07924',
+    description:
+        'Multi-agent system where specialized agents (CEO, CTO, programmer, reviewer) '
+        'collaborate through structured chat to build software — a real case study of hierarchical orchestration.',
+  ),
+  Source(
+    title: 'CrewAI: Multi-Agent Collaboration Framework',
+    url: 'https://docs.crewai.com/',
+    description:
+        'Production-oriented framework for defining agent roles, goals, and delegation chains, '
+        'implementing the orchestrator-worker and hierarchical patterns discussed in this lesson.',
+  ),
+  Source(
+    title: 'Meta-Prompting: Multi-Agent via Scaffolding (Suzgun & Kalai, 2024)',
+    url: 'https://arxiv.org/abs/2401.12954',
+    description:
+        'Research showing that a single LLM can orchestrate multiple "expert" personas through '
+        'meta-prompting, achieving multi-agent benefits without separate agent instances.',
   ),
 ];

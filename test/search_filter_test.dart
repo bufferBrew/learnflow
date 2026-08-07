@@ -9,11 +9,15 @@ import 'package:learnflow/models/review.dart';
 import 'package:learnflow/models/source.dart';
 import 'package:learnflow/models/topic.dart';
 import 'package:learnflow/screens/topic_list_screen.dart';
+import 'package:learnflow/state/achievement_provider.dart';
 import 'package:learnflow/state/bookmark_provider.dart';
+import 'package:learnflow/state/game_play_provider.dart';
 import 'package:learnflow/state/lesson_library.dart';
 import 'package:learnflow/state/progress_provider.dart';
+import 'package:learnflow/state/recently_viewed_provider.dart';
 import 'package:learnflow/state/resume_provider.dart';
 import 'package:learnflow/state/search_filter_provider.dart';
+import 'package:learnflow/state/streak_provider.dart';
 import 'package:learnflow/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 
@@ -145,6 +149,14 @@ Future<void> _pumpTopics(
         ChangeNotifierProvider<ProgressProvider>(create: (_) => ProgressProvider()),
         ChangeNotifierProvider<BookmarkProvider>(create: (_) => BookmarkProvider()),
         ChangeNotifierProvider<ResumeProvider>(create: (_) => ResumeProvider()),
+        ChangeNotifierProvider<RecentlyViewedProvider>(
+          create: (_) => RecentlyViewedProvider(),
+        ),
+        ChangeNotifierProvider<StreakProvider>(create: (_) => StreakProvider()),
+        ChangeNotifierProvider<AchievementProvider>(
+          create: (_) => AchievementProvider(),
+        ),
+        ChangeNotifierProvider<GamePlayProvider>(create: (_) => GamePlayProvider()),
       ],
       child: MaterialApp(
         theme: AppTheme.light,

@@ -14,13 +14,14 @@ const Lesson whatAreAiAgentsLesson = Lesson(
   description:
       'The agent loop, the ReAct pattern, the autonomy spectrum, and why more '
       'autonomous steps mean more chances to fail.',
-  estimatedMinutes: 26,
+  estimatedMinutes: 34,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -138,6 +139,35 @@ year-over-year.")
               'improves the quality of the action that follows — it gives the '
               'model a scratchpad to catch its own confusion before '
               'committing to a tool call, rather than after.',
+        ),
+        CollapsibleBlock(
+          title: 'Deep dive: ReAct vs Plan-and-Execute vs Code-Acting agents',
+          children: [
+            ProseBlock(
+              'Three families of agent architecture have emerged beyond basic '
+              'ReAct. Plan-and-Execute (sometimes called Plan-and-Solve) '
+              'separates planning and execution into two phases: first, the '
+              'model drafts a complete plan (step 1 do X, step 2 do Y...), '
+              'then a separate executor carries out each step, revisiting the '
+              'plan only if a step fails. This works well when tasks are '
+              'predictable but is brittle to surprises that the plan could '
+              'not anticipate — exactly the failure mode ReAct avoids by '
+              'interleaving.',
+            ),
+            ProseBlock(
+              'Code-Acting agents (used by SWE-Agent, Open Interpreter, and '
+              'Claude\'s computer use) go further: instead of producing '
+              'thought-action pairs in natural language, the agent writes and '
+              'executes code (Python, bash) as its action. The observation is '
+              'the code\'s stdout/stderr/return value. This gives the agent '
+              'deterministic tools (code execution is precise) while still '
+              'letting it adapt via conditional logic — a hybrid between the '
+              'strictness of tool calling and the flexibility of natural '
+              'language reasoning. The tradeoff: code is harder to audit '
+              'than prose for non-technical users, and a coding error can '
+              'have real side effects if execution is not sandboxed.',
+            ),
+          ],
         ),
       ],
     ),
@@ -532,6 +562,94 @@ print(run_agent("Look something up", confused_model_step))
               'cheaply, and the distinct error message also tells whoever is '
               'debugging the run exactly what went wrong, rather than just '
               '"ran out of steps."',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-compounding-error',
+      title: 'Model compounding error across sequential agent steps',
+      prompt: [
+        ProseBlock(
+          'Implement simulate_agent_runs(per_step_accuracy, n_steps, '
+          'n_trials) that simulates n_trials independent agent runs, each '
+          'with n_steps sequential decisions where each step succeeds with '
+          'probability per_step_accuracy independently. Return the fraction '
+          'of runs where all steps succeeded.',
+        ),
+        ProseBlock(
+          'Run it at per_step_accuracy=0.95 for n_steps from 1 to 20 and '
+          'compare the empirical results against the theoretical '
+          'per_step_accuracy^n_steps. This is the napkin-math version of '
+          'the lesson\'s compounding error argument.',
+        ),
+      ],
+      starterCode: '''
+import random
+
+
+def simulate_agent_runs(per_step_accuracy, n_steps, n_trials=10000):
+    """Return fraction of trials where all n_steps succeeded."""
+    ...
+
+
+random.seed(42)
+for n_steps in (1, 5, 10, 15, 20):
+    empirical = simulate_agent_runs(0.95, n_steps)
+    theoretical = 0.95 ** n_steps
+    print(
+        f"steps={n_steps:>2}  empirical={empirical:.3f}  "
+        f"theoretical={theoretical:.3f}"
+    )
+''',
+      solutionCode: '''
+import random
+
+
+def simulate_agent_runs(per_step_accuracy, n_steps, n_trials=10000):
+    successes = 0
+    for _ in range(n_trials):
+        if all(random.random() < per_step_accuracy for _ in range(n_steps)):
+            successes += 1
+    return successes / n_trials
+
+
+random.seed(42)
+for n_steps in (1, 5, 10, 15, 20):
+    empirical = simulate_agent_runs(0.95, n_steps)
+    theoretical = 0.95 ** n_steps
+    print(
+        f"steps={n_steps:>2}  empirical={empirical:.3f}  "
+        f"theoretical={theoretical:.3f}"
+    )
+
+# steps= 1  empirical=0.950  theoretical=0.950
+# steps= 5  empirical=0.774  theoretical=0.774
+# steps=10  empirical=0.595  theoretical=0.599
+# steps=15  empirical=0.463  theoretical=0.463
+# steps=20  empirical=0.359  theoretical=0.358
+#
+# Even at 95% per-step accuracy, a 20-step autonomous chain fails ~64%
+# of the time. This is why the lesson argues for shorter bounded loops
+# rather than long autonomous chains.
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'The simulation assumes each step is independent. In a real '
+              'agent, if step 3 fails, steps 4-20 do not even get a chance '
+              'to succeed because the plan is already broken. Does that make '
+              'real agents better or worse than this model, and why?',
+          expectedAnswer:
+              'Worse — the independence assumption is optimistic. In a real '
+              'agent, a failure at step 3 typically cascades: the agent '
+              'builds subsequent decisions on wrong information from step '
+              '3\'s result, so steps 4-20 are not just independent attempts '
+              'but actively steered further from the correct answer. The '
+              'simulation\'s 0.95^n is actually a lower bound on failure '
+              'rate, not an upper bound. Real agents fail more often than '
+              'this model predicts because errors compound directionally, '
+              'not just independently.',
         ),
       ],
     ),
@@ -1168,5 +1286,36 @@ const List<Source> _sources = [
         'Shows the concrete request/response round trip behind the abstract '
         'act-and-observe step in the agent loop, ahead of the next lesson\'s '
         'deep dive on tool calling.',
+  ),
+];
+
+const List<Source> _furtherReading = <Source>[
+  Source(
+    title: 'SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering (Yang et al., 2024)',
+    url: 'https://arxiv.org/abs/2405.15793',
+    description:
+        'Production agent design patterns from the SWE-bench winning system, '
+        'including the agent-computer interface (ACI) concept that constrains agent actions.',
+  ),
+  Source(
+    title: 'The Dawn of Agentic Software Engineering — Lilian Weng\'s Blog',
+    url: 'https://lilianweng.github.io/posts/2024-10-24-agents/',
+    description:
+        'Comprehensive overview of LLM agent architectures: planning, memory, tool use, '
+        'and the autonomy spectrum with practical design recommendations.',
+  ),
+  Source(
+    title: 'Generative Agents: Interactive Simulacra of Human Behavior (Park et al., 2023)',
+    url: 'https://arxiv.org/abs/2304.03442',
+    description:
+        'Foundational paper on agent architectures with memory streams, reflection, and planning — '
+        'the architecture behind multi-step agent behaviour that goes beyond single loops.',
+  ),
+  Source(
+    title: 'Anthropic\'s Research on AI Agent Safety and Evaluation',
+    url: 'https://www.anthropic.com/research#agent-safety',
+    description:
+        'Collection of Anthropic research on evaluating agent capabilities, '
+        'safety guardrails, and the failure modes observed in production agent systems.',
   ),
 ];

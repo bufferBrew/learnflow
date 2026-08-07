@@ -9,9 +9,9 @@ void main() {
     test('carries content for all four modes', () {
       expect(sampleLesson.id, 'py-variables-and-data-types');
       expect(sampleLesson.title, 'Variables & Data Types');
-      expect(sampleLesson.estimatedMinutes, 18);
+      expect(sampleLesson.estimatedMinutes, 25);
       expect(sampleLesson.read.sections, hasLength(3));
-      expect(sampleLesson.practice.exercises, hasLength(2));
+      expect(sampleLesson.practice.exercises, hasLength(4));
       expect(sampleLesson.podcast.variants, hasLength(PodcastVariant.values.length));
       expect(sampleLesson.review.keyConcepts, hasLength(4));
       expect(sampleLesson.sources, hasLength(2));

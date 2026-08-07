@@ -13,13 +13,14 @@ const Lesson controlFlowLesson = Lesson(
   description:
       'Branching, looping and pattern matching — how Python decides which '
       'statement runs next.',
-  estimatedMinutes: 20,
+  estimatedMinutes: 28,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: _play,
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -82,6 +83,42 @@ if 18 <= age < 65:
               'early swallows every narrower case below it. If score >= 70 came '
               'first, no score would ever be graded A.',
         ),
+        ProseBlock(
+          'A guard clause is an if at the top of a function that bails out '
+          'early on an edge case — invalid input, a missing argument, a '
+          'boundary condition. It keeps the "happy path" at one indentation '
+          'level and avoids the deep nesting that makes conditions hard to '
+          'follow. This is arguably the single most important readability '
+          'pattern in control flow.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+# Deep nesting: the happy path is buried under three indentation levels.
+def process(order):
+    if order is not None:
+        if order.total > 0:
+            if order.status == "pending":
+                # Finally, the actual logic.
+                order.fulfill()
+
+# Guard clauses: bail out early, happy path stays at the top level.
+def process(order):
+    if order is None:
+        return
+    if order.total <= 0:
+        raise ValueError("order must have a positive total")
+    if order.status != "pending":
+        return
+    # Clear, un-nested logic follows.
+    order.fulfill()
+
+# Ternary expression: a single if/else that fits on one line.
+status = "passed" if score >= 70 else "failed"
+print(status)
+''',
+          caption: 'Guard clauses flatten logic; ternary for one-line branches.',
+        ),
       ],
     ),
     Section(
@@ -136,6 +173,39 @@ if False and expensive():           # expensive() never runs
               'legitimate value, test explicitly with if count is None: — '
               'otherwise a valid zero silently takes the "missing" branch.',
         ),
+        ProseBlock(
+          'Python resolves truthiness by calling __bool__ first, and falling '
+          'back to __len__ if __bool__ is not defined — zero length means '
+          'falsy. This is why empty containers are automatically falsy with '
+          'no special-casing, and why types like NumPy arrays can explicitly '
+          'refuse the question by raising ValueError in __bool__ rather than '
+          'guess between any() and all().',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+# __bool__ has priority; __len__ is the fallback.
+class AlwaysTrue:
+    def __bool__(self):
+        return True
+
+class AlwaysFalse:
+    def __len__(self):
+        return 0
+
+print(bool(AlwaysTrue()), bool(AlwaysFalse()))   # True False
+
+# The "all" and "any" builtins work on any iterable and short-circuit.
+print(all([True, True, False]))   # False — stops at the first False
+print(any([0, 0, 1]))            # True — stops at the first truthy value
+
+# Practical: validate a whole form at once.
+fields = {"name": "Ada", "email": "", "age": 25}
+valid = all(fields.values())      # False — email is empty string
+print(valid)
+''',
+          caption: '__bool__/__len__ decide truthiness; all/any test collections.',
+        ),
       ],
     ),
     Section(
@@ -189,6 +259,39 @@ for x, y in points:
               'for user in users reads better than for i in range(len(users)) '
               'followed by users[i], and it cannot go out of range. Reach for '
               'an index only when you need the number itself.',
+        ),
+        ProseBlock(
+          'zip_longest from itertools fills shorter sequences with a sentinel '
+          'value instead of stopping, and strict=True (Python 3.10+) makes '
+          'zip raise when sequences have mismatched lengths — turning a subtle '
+          'data-loss bug into a loud error. These two variations cover the '
+          'cases where plain zip\'s "stop at the shortest" behaviour is wrong.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+from itertools import zip_longest
+
+names = ["ada", "grace"]
+scores = [91, 88, 74]
+
+# zip stops silently at the shortest — scores[2] is silently dropped.
+for n, s in zip(names, scores):
+    print(n, s)
+
+# strict=True makes mismatched lengths a bug.
+try:
+    for n, s in zip(names, scores, strict=True):
+        print(n, s)
+except ValueError as exc:
+    print("mismatch:", exc)     # "zip() argument 2 is longer than argument 1"
+
+# zip_longest fills the gaps with a sentinel.
+for n, s in zip_longest(names, scores, fillvalue=0):
+    print(n, s)
+# ada 91 / grace 88 / 0 74
+''',
+          caption: 'zip(strict=True) catches mismatches; zip_longest pads them.',
         ),
       ],
     ),
@@ -327,6 +430,43 @@ print(describe(42))                                 # unknown event
           'lookup a dict of handlers is usually shorter, and a plain if/elif '
           'chain remains the right tool for conditions that are not about '
           'structure at all.',
+        ),
+        ProseBlock(
+          'OR patterns (|) combine alternatives, AS patterns (as) bind '
+          'sub-patterns to names, and class patterns match instance attributes. '
+          'These compose: you can match {"status": 200 | 201 as code} to '
+          'match either status and capture it as "code". This makes match '
+          'dramatically more expressive than a chain of isinstance checks.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+class Point:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+
+def locate(p):
+    match p:
+        case Point(x=0, y=0):
+            return "origin"
+        case Point(x=0, y=y):
+            return f"y-axis at {y}"
+        case Point(x=x, y=y) if x == y:
+            return f"diagonal at {x}"
+        case Point():
+            return f"point ({p.x}, {p.y})"
+        case _:
+            return "not a point"
+
+
+print(locate(Point(0, 0)))    # origin
+print(locate(Point(0, 5)))    # y-axis at 5
+print(locate(Point(3, 3)))    # diagonal at 3
+print(locate(Point(5, 8)))    # point (5, 8)
+''',
+          caption: 'Class patterns match attributes; guards add conditions.',
         ),
       ],
     ),
@@ -510,6 +650,155 @@ find_first_even([])              # no even numbers
               'extra lines of bookkeeping whose only job is to remember '
               'whether break ran — which is precisely what the else clause '
               'already records.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-cf-match-dispatch',
+      title: 'Dispatch commands with match',
+      prompt: [
+        ProseBlock(
+          'Write process_command(cmd) that takes a dict with a "command" key '
+          'and optional parameters. Use match to dispatch: {"command": "echo", '
+          '"text": t} returns the text, {"command": "add", "a": a, "b": b} '
+          'returns a + b, {"command": "quit"} returns "bye", and anything else '
+          'raises ValueError. Assume numbers may be int or float.',
+        ),
+      ],
+      starterCode: '''
+def process_command(cmd):
+    match cmd:
+        # TODO: three patterns for echo, add, quit, plus a default case
+        ...
+
+
+print(process_command({"command": "echo", "text": "hello"}))
+print(process_command({"command": "add", "a": 10, "b": 3.5}))
+print(process_command({"command": "quit"}))
+''',
+      solutionCode: '''
+def process_command(cmd):
+    match cmd:
+        case {"command": "echo", "text": str(text)}:
+            return text
+        case {"command": "add", "a": int(a) | float(a), "b": int(b) | float(b)}:
+            return a + b
+        case {"command": "quit"}:
+            return "bye"
+        case _:
+            raise ValueError(f"unknown command: {cmd}")
+
+
+print(process_command({"command": "echo", "text": "hello"}))     # hello
+print(process_command({"command": "add", "a": 10, "b": 3.5}))   # 13.5
+print(process_command({"command": "quit"}))                      # bye
+
+try:
+    process_command({"command": "delete"})
+except ValueError as exc:
+    print(exc)     # unknown command: {'command': 'delete'}
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'Why use int(a) | float(a) in the add pattern rather than just '
+              'accepting any value?',
+          expectedAnswer:
+              'It validates the types structurally, so passing {"command": '
+              '"add", "a": "ten"} would not match the add case and would fall '
+              'through to ValueError instead of producing a confusing '
+              'TypeError at runtime.',
+        ),
+        SelfCheckQuestion(
+          question: 'What happens if an unrecognised key such as "debug" is '
+              'present in the echo command dict?',
+          expectedAnswer:
+              'The pattern still matches because dict patterns match by the '
+              'presence of the specified keys, not by exact equality. Extra '
+              'keys are ignored — which is usually what you want for '
+              'extensible message protocols.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-cf-refactor-nesting',
+      title: 'Flatten deep nesting with guard clauses',
+      prompt: [
+        ProseBlock(
+          'The function below validates a user record with deeply nested '
+          'conditionals. Refactor it to use guard clauses: each invalid case '
+          'returns early, so the successful path stays at one indentation '
+          'level. Raise ValueError with a specific message for each failure, '
+          'then return the sanitised record on success.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+def sanitise(record):
+    if record is not None:
+        if "name" in record:
+            if len(record["name"]) > 0:
+                return record
+    return None
+''',
+        ),
+      ],
+      starterCode: '''
+def sanitise(record):
+    if record is not None:
+        if "name" in record:
+            if len(record["name"]) > 0:
+                return record
+    return None
+
+
+# Should raise informative errors, not return None.
+print(sanitise({"name": "Ada"}))
+# print(sanitise({"name": ""}))   # should raise ValueError
+''',
+      solutionCode: '''
+def sanitise(record):
+    if record is None:
+        raise ValueError("record must not be None")
+    if "name" not in record:
+        raise ValueError("record must contain a 'name' field")
+    if len(record["name"]) == 0:
+        raise ValueError("name must not be empty")
+    return record
+
+
+print(sanitise({"name": "Ada"}))     # {'name': 'Ada'}
+
+for bad in [None, {}, {"name": ""}]:
+    try:
+        sanitise(bad)
+    except ValueError as exc:
+        print(exc)
+# record must not be None
+# record must contain a 'name' field
+# name must not be empty
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'Why raise ValueError instead of returning None for each failure?',
+          expectedAnswer:
+              'Returning None tells the caller only that something failed — '
+              'not what or why. An exception carries a specific message and '
+              'type, so the caller can log, report, or recover differently '
+              'depending on which failure occurred. It also cannot be silently '
+              'ignored the way a returned None can.',
+        ),
+        SelfCheckQuestion(
+          question:
+              'What is the advantage of the guard-clause style here?',
+          expectedAnswer:
+              'Each failure is isolated to a single if statement, the happy '
+              'path stays at the top indentation level, and adding a new '
+              'validation rule means inserting one new guard clause — not '
+              'nesting another level deeper.',
         ),
       ],
     ),
@@ -1101,5 +1390,35 @@ const List<Source> _sources = [
     description:
         'Language reference for every statement that contains a suite, '
         'including the precise semantics of match patterns.',
+  ),
+];
+
+const List<Source> _furtherReading = [
+  Source(
+    title: '8. Errors and Exceptions — Python Docs',
+    url: 'https://docs.python.org/3/tutorial/errors.html',
+    description:
+        'Covers raising and handling exceptions, which is the companion topic '
+        'to control flow and the preferred way to signal failure in Python.',
+  ),
+  Source(
+    title: 'Conditional Statements in Python — Real Python',
+    url: 'https://realpython.com/python-conditional-statements/',
+    description:
+        'In-depth guide to if/elif/else chains, ternary expressions, and common branching patterns.',
+  ),
+  Source(
+    title: 'PEP 636 – Structural Pattern Matching: Tutorial',
+    url: 'https://peps.python.org/pep-0636/',
+    description:
+        'The official tutorial introducing match/case with walk-through examples '
+        'of sequence, mapping, and class patterns.',
+  ),
+  Source(
+    title: 'Python "for" Loops (Definite Iteration) — Real Python',
+    url: 'https://realpython.com/python-for-loop/',
+    description:
+        'Comprehensive guide to for loops, iterables, iterators, enumerate, zip, '
+        'and the iterator protocol.',
   ),
 ];

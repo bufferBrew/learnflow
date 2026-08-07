@@ -13,13 +13,14 @@ const Lesson environmentsLesson = Lesson(
   description:
       'Why every project needs its own interpreter environment, and how to '
       'turn a folder of scripts into an installable package.',
-  estimatedMinutes: 20,
+  estimatedMinutes: 28,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: _play,
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -128,6 +129,26 @@ deactivate            # restores the previous PATH
               'A bare pip is whichever pip is first on PATH, which may belong '
               'to a different interpreter entirely. python -m pip installs into '
               'the interpreter you just named, so the two can never disagree.',
+        ),
+        ProseBlock(
+          'include-system-site-packages in pyvenv.cfg is a flag that lets '
+          'your environment see packages installed globally. It sounds '
+          'convenient ("I already have NumPy installed globally") but it '
+          'reintroduces invisible coupling — your project now silently depends '
+          'on whatever version happens to be on the system. Leave it false '
+          'unless you have a specific, documented reason.',
+        ),
+        CodeBlock(
+          language: 'bash',
+          code: r'''
+# DO NOT do this without a good reason:
+# python3 -m venv --system-site-packages .venv
+
+# The right way: isolation. If you need a global tool, use pipx:
+# pipx install black
+# pipx install ruff
+''',
+          caption: 'System site-packages breaks isolation; use pipx for global tools.',
         ),
       ],
     ),
@@ -302,6 +323,29 @@ print(len(installed), "distributions:", installed[:5])
 ''',
           caption:
               'importlib.metadata reads installed package metadata at runtime.',
+        ),
+        ProseBlock(
+          'pipx is the companion tool for globally available command-line '
+          'tools. Each tool gets its own isolated environment, so two tools '
+          'with incompatible dependencies coexist without conflict. Use pipx '
+          'for black, ruff, httpie, and any Python-based CLI you want '
+          'available everywhere without polluting your project environments.',
+        ),
+        CodeBlock(
+          language: 'bash',
+          code: r'''
+# Install CLI tools globally, in their own isolated environments.
+pipx install black
+pipx install ruff
+pipx install httpie
+
+# Run a tool once without installing it permanently.
+pipx run pycowsay "hello"
+
+# List everything pipx manages.
+pipx list
+''',
+          caption: 'pipx isolates CLI tools; each gets its own hidden venv.',
         ),
       ],
     ),
@@ -512,6 +556,144 @@ python -m pip list
               'colleague\'s machine and never added to requirements.txt or '
               'pyproject.toml. The fix belongs in the dependency declaration, '
               'not in another manual pip install.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-env-importlib',
+      title: 'Read installed package metadata programmatically',
+      prompt: [
+        ProseBlock(
+          'Write list_dependencies() that uses importlib.metadata to return a '
+          'dict mapping every installed distribution name to its version. '
+          'Exclude any package whose name starts with an underscore (private '
+          'convention) and sort the result alphabetically by name. Do not '
+          'shell out to pip.',
+        ),
+      ],
+      starterCode: '''
+from importlib.metadata import distributions
+
+
+def list_dependencies():
+    # TODO: iterate distributions(), build {name: version} dict, exclude _
+    ...
+
+
+for name, ver in list_dependencies().items():
+    print(f"{name}=={ver}")
+''',
+      solutionCode: '''
+from importlib.metadata import distributions
+
+
+def list_dependencies():
+    result = {}
+    for dist in distributions():
+        name = dist.metadata["Name"]
+        if name.startswith("_"):
+            continue
+        result[name] = dist.version
+    return dict(sorted(result.items()))
+
+
+for name, ver in list_dependencies().items():
+    print(f"{name}=={ver}")
+# Output varies by environment — shows every package pip or
+# the build backend installed, alphabetically.
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'Why use importlib.metadata instead of parsing pip freeze output?',
+          expectedAnswer:
+              'importlib.metadata reads the same metadata pip write '
+              'directly from the installed package directories. It works '
+              'regardless of whether pip is available, runs orders of '
+              'magnitude faster than a subprocess, and cannot be confused by '
+              'pip version differences or shell escaping issues.',
+        ),
+        SelfCheckQuestion(
+          question:
+              'What kind of packages start with an underscore, and why '
+              'exclude them?',
+          expectedAnswer:
+              'Build backends and tools sometimes install private helper '
+              'packages with underscore-prefixed names (e.g. _virtualenv). '
+              'These are implementation details, not user-facing dependencies, '
+              'and listing them adds noise without useful information.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-env-version-compare',
+      title: 'Check if a minimum version is satisfied',
+      prompt: [
+        ProseBlock(
+          'Write check_minimum_version(package, minimum) that uses '
+          'importlib.metadata.version to get the installed version and '
+          'packaging.version.parse to compare it against the minimum. Return '
+          'True if the installed version is at least the minimum, False if the '
+          'package is not installed, and raise if the version strings cannot '
+          'be parsed.',
+        ),
+      ],
+      starterCode: '''
+from importlib.metadata import version, PackageNotFoundError
+from packaging.version import parse as parse_version
+
+
+def check_minimum_version(package, minimum):
+    # TODO: get installed version, compare with minimum using parse_version
+    ...
+
+
+print(check_minimum_version("pip", "20.0"))    # True (pip is installed)
+print(check_minimum_version("nonexistent", "1.0"))   # False
+''',
+      solutionCode: '''
+from importlib.metadata import version, PackageNotFoundError
+from packaging.version import parse as parse_version
+
+
+def check_minimum_version(package, minimum):
+    try:
+        installed = version(package)
+    except PackageNotFoundError:
+        return False
+    return parse_version(installed) >= parse_version(minimum)
+
+
+print(check_minimum_version("pip", "20.0"))
+# True (pip is almost certainly >= 20.0)
+
+print(check_minimum_version("nonexistent", "1.0"))
+# False
+
+print(check_minimum_version("pip", "999.0"))
+# False — pip will never satisfy this
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'Why use packaging.version.parse rather than a plain string '
+              'comparison or tuple of ints?',
+          expectedAnswer:
+              'Version numbers can include pre-release markers ("1.0a1"), '
+              'post-release ("1.0.post1"), epochs ("1!2.0"), and local '
+              'identifiers ("1.0+ubuntu"). parse_version handles all of these '
+              'correctly according to PEP 440; string comparison or manual '
+              'splitting on dots gets them wrong in subtle ways.',
+        ),
+        SelfCheckQuestion(
+          question: 'Where does packaging.version come from?',
+          expectedAnswer:
+              'The packaging library (install with pip install packaging). '
+              'It is a dependency of pip itself, so it is usually already '
+              'present in any environment that has pip. It is the reference '
+              'implementation of PEP 440 version parsing.',
         ),
       ],
     ),
@@ -1086,5 +1268,36 @@ const List<Source> _sources = [
     description:
         'Module reference covering the directory layout an environment '
         'creates, the contents of pyvenv.cfg and how the interpreter uses it.',
+  ),
+];
+
+const List<Source> _furtherReading = [
+  Source(
+    title: 'Packaging Python Projects — Python Packaging Authority',
+    url: 'https://packaging.python.org/en/latest/tutorials/packaging-projects/',
+    description:
+        'The official PyPA tutorial on creating a pyproject.toml, choosing a '
+        'build backend, and publishing to PyPI.',
+  ),
+  Source(
+    title: 'Python Virtual Environments: A Primer — Real Python',
+    url: 'https://realpython.com/python-virtual-environments-a-primer/',
+    description:
+        'Comprehensive guide to venv, activation/deactivation, pip, and '
+        'common workflows for isolated development.',
+  ),
+  Source(
+    title: 'importlib.metadata — Python Docs',
+    url: 'https://docs.python.org/3/library/importlib.metadata.html',
+    description:
+        'Reference for programmatically reading installed package metadata: '
+        'version, distributions, entry points, and requirements.',
+  ),
+  Source(
+    title: 'PEP 517 – A build-system independent format for source trees',
+    url: 'https://peps.python.org/pep-0517/',
+    description:
+        'The PEP that defined the pyproject.toml [build-system] table and '
+        'standardised how build backends are invoked.',
   ),
 ];

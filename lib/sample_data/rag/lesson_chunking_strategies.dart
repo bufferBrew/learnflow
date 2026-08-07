@@ -16,13 +16,14 @@ const Lesson chunkingStrategiesLesson = Lesson(
       'Fixed-size, recursive and semantic splitting, why overlap exists and '
       'what it costs, and how to choose and evaluate a chunk size instead of '
       'guessing one.',
-  estimatedMinutes: 28,
+  estimatedMinutes: 36,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -545,6 +546,37 @@ for name, results in configs.items():
               'directly against a labelled set isolates the retrieval step '
               'so it can be evaluated on its own.',
         ),
+        CollapsibleBlock(
+          title: 'Deep dive: chunking decisions interact with the retrieval index',
+          children: [
+            ProseBlock(
+              'Chunk size does not only affect what one chunk contains — it '
+              'affects how many vectors the index must store and search. A '
+              'corpus of 100,000 documents chunked into 300-token pieces '
+              'might produce 500,000 vectors; the same corpus at 800-token '
+              'chunks might produce 200,000. Fewer vectors means a smaller, '
+              'faster index, but each vector now represents a broader span '
+              'of text, so individual retrieval precision drops. This is a '
+              'deeper tradeoff than "what size produces coherent chunks" — '
+              'it is a direct lever on the recall/latency tradeoff of the '
+              'ANN index underneath.',
+            ),
+            ProseBlock(
+              'For production systems, the chunking strategy also interacts '
+              'with the metadata filtering layer. If chunks carry metadata '
+              '(document title, section, date), a well-crafted filter can '
+              'narrow the search space before similarity scoring runs. This '
+              'changes the calculus: with strong metadata filtering, you can '
+              'use smaller chunks because the filter already ensures topical '
+              'relevance, and the embedding only needs to fine-rank within a '
+              'narrow band. Without filtering, larger chunks are safer '
+              'because the retriever\'s only signal is the embedding itself. '
+              'This is why vector databases that support hybrid filtering '
+              '(Pinecone, Weaviate) tend to work better with smaller chunks '
+              'than bare FAISS indexes.',
+            ),
+          ],
+        ),
       ],
     ),
   ],
@@ -947,6 +979,106 @@ print("groups:", group_sentences(len(sentences), boundaries))
               'on already well-structured content, like API reference pages '
               'or a one-topic-per-file wiki, where recursive splitting on '
               'headings already produces coherent chunks for free.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-chunk-metadata-header',
+      title: 'Prepend metadata to chunks for structured content',
+      prompt: [
+        ProseBlock(
+          'Given a list of table rows (each as a dict) and a list of column '
+          'headers, implement chunk_with_headers(rows, headers) that '
+          'converts each row into a text string that prepends the header '
+          'names to the values. For example, row {"city": "Paris", "pop": 2.1} '
+          'with headers ["city", "pop"] becomes "city: Paris | pop: 2.1".',
+        ),
+        ProseBlock(
+          'This is the simplest version of the "prepend context" trick from '
+          'the lesson: each row is now a self-contained chunk that reads '
+          'correctly in isolation, rather than a disconnected value list.',
+        ),
+      ],
+      starterCode: '''
+headers = ["product", "price", "in_stock", "category"]
+rows = [
+    {"product": "Widget A", "price": 9.99, "in_stock": True, "category": "tools"},
+    {"product": "Widget B", "price": 14.50, "in_stock": False, "category": "tools"},
+    {"product": "Gadget X", "price": 29.99, "in_stock": True, "category": "electronics"},
+]
+
+
+def chunk_with_headers(rows, headers):
+    """Return a list of text strings, one per row, with headers prepended."""
+    ...
+
+
+chunks = chunk_with_headers(rows, headers)
+for i, c in enumerate(chunks):
+    print(f"chunk {i}: {c}")
+''',
+      solutionCode: '''
+headers = ["product", "price", "in_stock", "category"]
+rows = [
+    {"product": "Widget A", "price": 9.99, "in_stock": True, "category": "tools"},
+    {"product": "Widget B", "price": 14.50, "in_stock": False, "category": "tools"},
+    {"product": "Gadget X", "price": 29.99, "in_stock": True, "category": "electronics"},
+]
+
+
+def chunk_with_headers(rows, headers):
+    return [
+        " | ".join(f"{h}: {row[h]}" for h in headers)
+        for row in rows
+    ]
+
+
+chunks = chunk_with_headers(rows, headers)
+for i, c in enumerate(chunks):
+    print(f"chunk {i}: {c}")
+
+# chunk 0: product: Widget A | price: 9.99 | in_stock: True | category: tools
+# chunk 1: product: Widget B | price: 14.5 | in_stock: False | category: tools
+# chunk 2: product: Gadget X | price: 29.99 | in_stock: True | category: electronics
+#
+# Each chunk now reads as a complete sentence that makes sense without
+# the surrounding table or column headers for context.
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'Why does prepending headers to each row produce better '
+              'retrieval than embedding rows as bare value lists?',
+          expectedAnswer:
+              'An embedding of a bare value list like "Widget A | 9.99 | '
+              'True | tools" loses all semantic connection between the '
+              'values and their meaning — the embedding model sees it as a '
+              'random string. Prepending headers ("product: Widget A | '
+              'price: 9.99") gives the embedding model structured prose it '
+              'was actually trained to understand, so "price: 9.99" embeds '
+              'near other price-related queries and "category: tools" '
+              'embeds near category-related queries. The header acts as a '
+              'bridge between the value and the semantic concept.',
+        ),
+        SelfCheckQuestion(
+          question:
+              'Each chunk now repeats the header names. For a table with '
+              '10,000 rows, that is 10,000 copies of "product | price | '
+              'in_stock | category". Is that a real cost, and when is it '
+              'worth paying?',
+          expectedAnswer:
+              'Yes, it is a real cost — the header tokens are stored, '
+              'embedded, and indexed with every row, inflating the index '
+              'size. For a 10k-row table with 30-character headers, that '
+              'is roughly 300k extra characters in the index. It is worth '
+              'it when rows are likely to be retrieved individually and '
+              'the header context is what makes them interpretable — '
+              'nearly always in RAG, since a row retrieved alone without '
+              'its headers is useless to the generator. The alternative '
+              '(stripping headers to save tokens) saves index space but '
+              'guarantees every retrieved row is ambiguous, defeating the '
+              'purpose of retrieval entirely.',
         ),
       ],
     ),
@@ -1657,5 +1789,36 @@ const List<Source> _sources = [
         'An arXiv paper analysing similarity-based semantic chunking and '
         'its limitations, backing the semantic-chunking mechanism and cost '
         'discussion in this lesson.',
+  ),
+];
+
+const List<Source> _furtherReading = <Source>[
+  Source(
+    title: 'Chunking Strategies for RAG: A Deep Dive — LlamaIndex Blog',
+    url: 'https://www.llamaindex.ai/blog/evaluating-the-ideal-chunk-size-for-a-rag-system-using-llamaindex',
+    description:
+        'Empirical evaluation of chunk sizes (256, 512, 1024 tokens) across retrieval benchmarks, '
+        'showing how chunk size affects faithfulness and relevancy metrics in production RAG.',
+  ),
+  Source(
+    title: 'LangChain Text Splitters: Semantics, Markdown, and Code',
+    url: 'https://python.langchain.com/docs/how_to/#text-splitters',
+    description:
+        'Official LangChain guide to all built-in text splitters including Markdown-header-aware, '
+        'code-language-aware, and semantic chunking options used in real pipelines.',
+  ),
+  Source(
+    title: 'Semantic Chunking for RAG — Weaviate Blog',
+    url: 'https://weaviate.io/blog/semantic-chunking-for-rag',
+    description:
+        'Step-by-step guide to implementing semantic chunking with embedding similarity, '
+        'including percentile-based thresholding and adaptive breakpoint detection.',
+  ),
+  Source(
+    title: 'Llamaindex Node Parser: Structured Content Chunking',
+    url: 'https://docs.llamaindex.ai/en/stable/module_guides/loading/node_parsers/',
+    description:
+        'Documentation on LlamaIndex\'s node parsers for HTML, JSON, and Markdown, '
+        'showing structured-content-aware chunking patterns for tables and code.',
   ),
 ];

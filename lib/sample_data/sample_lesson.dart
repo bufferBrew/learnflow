@@ -14,13 +14,14 @@ const Lesson sampleLesson = Lesson(
   title: 'Variables & Data Types',
   description:
       'How Python names values, and the built-in types those values can have.',
-  estimatedMinutes: 18,
+  estimatedMinutes: 25,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: _play,
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -66,6 +67,38 @@ print(a)            # [1, 2, 3, 4]
               'Because b = a shares one list, mutating through either name is '
               'visible through both. Use list(a) or a.copy() when you want an '
               'independent copy.',
+        ),
+        ProseBlock(
+          'The "is" operator tests identity — are these two names pointing at '
+          'the exact same object? — while "==" tests equality — are these two '
+          'objects meaningfully the same value? Because CPython caches small '
+          'integers (-5 to 256) and may intern short strings, "is" can appear '
+          'to work for value comparison in simple cases and then fail '
+          'silently at scale. The rule: use "is" only for None, and "==" for '
+          'everything else.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+# Small integers are cached — "is" happens to work... until it doesn't.
+a = 256
+b = 256
+print(a is b)   # True — both point to the same cached 256
+
+a = 257
+b = 257
+print(a is b)   # False — different objects at different addresses
+print(a == b)   # True — equality is what you meant
+
+# The one legitimate use of "is": comparing with None.
+def process(data=None):
+    if data is None:
+        data = []
+    # Now data is always a list, never None.
+    data.append("result")
+    return data
+''',
+          caption: '"is" compares identity, "==" compares value. Only use "is" for None.',
         ),
       ],
     ),
@@ -129,6 +162,29 @@ print(Decimal("0.1") + Decimal("0.2") == Decimal("0.3"))  # True
             ),
           ],
         ),
+        ProseBlock(
+          'Type annotations (x: int = 5) are optional metadata that the '
+          'interpreter ignores at runtime. They exist for humans, IDEs, and '
+          'static type checkers like mypy. Python remains dynamically typed '
+          'regardless of annotations — adding : int does not prevent x from '
+          'holding a string at runtime.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+# Type hints document intent; they are never enforced by the interpreter.
+def greet(name: str, age: int) -> str:
+    return f"{name} is {age} years old"
+
+print(greet("Ada", 36))          # works
+print(greet(42, "oops"))         # also works — hints are just metadata
+print(greet.__annotations__)     # {'name': <class 'str'>, 'age': <class 'int'>, 'return': <class 'str'>}
+
+# Use mypy to check hints statically (separate tool, not runtime).
+# mypy script.py
+''',
+          caption: 'Annotations document; mypy checks them before runtime.',
+        ),
       ],
     ),
     Section(
@@ -157,6 +213,40 @@ print(items)            # ['a', 'b']
 lookup = {(0, 0): "origin"}   # tuple key: fine
 # lookup[[0, 0]] = "origin"   # TypeError: unhashable type: 'list'
 ''',
+        ),
+        ProseBlock(
+          'Understanding what happens when you call a method on an immutable '
+          'object is critical. str.upper() returns a new string; the original '
+          'is untouched. This is true for all immutable types. If you do not '
+          'capture the return value — name = name.upper() — the new object is '
+          'lost. This is why forgetting to rebind after calling an immutable '
+          'method is one of the most common early mistakes.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+# Immutable: the original never changes. You MUST rebind.
+name = "ada"
+name.upper()           # returns "ADA" but does nothing with it
+print(name)            # "ada" — unchanged!
+
+name = name.upper()    # rebind the name to the new object
+print(name)            # "ADA"
+
+# Same pattern for any immutable type.
+point = (3, 4)
+# point[0] = 5         # TypeError: tuple does not support item assignment
+
+# But a tuple containing a mutable object can be modified "through" the tuple.
+nested = ([1, 2], "hello")
+nested[0].append(3)
+print(nested)          # ([1, 2, 3], 'hello') — the list inside mutated
+try:
+    hash(nested)       # TypeError: unhashable — the tuple contains a list
+except TypeError as exc:
+    print(exc)
+''',
+          caption: 'Immutable methods return new objects; mutable methods return None.',
         ),
       ],
     ),
@@ -265,6 +355,121 @@ print(updated)    # [90, 85, 77]
               'No. It is a shallow copy: the new list holds the same dict '
               'objects, so mutating a dict is still visible to the caller. A '
               'deep copy would be needed for that.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-vars-mutable-default',
+      title: 'Detect and fix the shared default trap',
+      prompt: [
+        ProseBlock(
+          'The function below uses a mutable default argument. Explain why '
+          'the second call does not return ["review"], then fix it so every '
+          'call that omits tasks starts with a fresh empty list.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+def add_task(name, tasks=[]):
+    tasks.append(name)
+    return tasks
+''',
+        ),
+      ],
+      starterCode: '''
+def add_task(name, tasks=[]):
+    tasks.append(name)
+    return tasks
+
+
+print(add_task("write"))     # ['write']
+print(add_task("review"))    # what does this print, and why?
+''',
+      solutionCode: '''
+def add_task(name, tasks=None):
+    if tasks is None:
+        tasks = []
+    tasks.append(name)
+    return tasks
+
+
+print(add_task("write"))              # ['write']
+print(add_task("review"))             # ['review'] — fresh list each time
+print(add_task("ship", ["draft"]))    # ['draft', 'ship']
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question: 'When is the default list [] actually created?',
+          expectedAnswer:
+              'Once, at definition time — when the def statement runs. It is '
+              'stored in add_task.__defaults__ and every call that omits tasks '
+              'mutates that one shared object.',
+        ),
+        SelfCheckQuestion(
+          question: 'Why is None the right sentinel here?',
+          expectedAnswer:
+              'None is unique, immutable, and cannot be confused with a real '
+              'argument. No caller would intentionally pass None to mean "here '
+              'is my list of tasks", so it safely means "not provided".',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-vars-decimal',
+      title: 'Handle money without floating point errors',
+      prompt: [
+        ProseBlock(
+          'Write total_price(items) where items is a list of (quantity, '
+          'unit_price) tuples. Use decimal.Decimal for all arithmetic so '
+          'that the result is exact. Construct Decimals from strings, not '
+          'floats. Return a Decimal rounded to two decimal places.',
+        ),
+      ],
+      starterCode: '''
+from decimal import Decimal, ROUND_HALF_UP
+
+
+def total_price(items):
+    # TODO: compute exact total using Decimal, round to 2 places
+    ...
+
+
+order = [(3, "4.99"), (1, "12.50"), (2, "0.79")]
+print(total_price(order))    # should be exactly 29.05
+''',
+      solutionCode: '''
+from decimal import Decimal, ROUND_HALF_UP
+
+
+def total_price(items):
+    total = Decimal("0")
+    for quantity, unit_price in items:
+        total += Decimal(unit_price) * quantity
+    return total.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+order = [(3, "4.99"), (1, "12.50"), (2, "0.79")]
+print(total_price(order))    # 29.05 — no floating-point rounding surprise
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question: 'Why build Decimal from strings rather than floats?',
+          expectedAnswer:
+              'Decimal(0.1) captures the float approximation of 0.1 first, '
+              'then converts it. Decimal("0.1") creates the exact value '
+              'directly. Constructing from strings avoids importing the very '
+              'floating-point error you are trying to escape.',
+        ),
+        SelfCheckQuestion(
+          question:
+              'Why use .quantize() instead of round()?',
+          expectedAnswer:
+              'round() with Decimals does banker\'s rounding (round half to '
+              'even), which can produce unexpected results for financial '
+              'applications. quantize() gives explicit control over the '
+              'rounding strategy.',
         ),
       ],
     ),
@@ -724,6 +929,37 @@ const List<Source> _sources = [
     description:
         'Tutorial chapter covering lists, tuples, dictionaries and sets, with '
         'the operations available on each.',
+  ),
+];
+
+const List<Source> _furtherReading = [
+  Source(
+    title: 'Variables in Python — Real Python',
+    url: 'https://realpython.com/python-variables/',
+    description:
+        'Deep dive into variable assignment, object references, identity '
+        'vs equality, and the "everything is an object" model.',
+  ),
+  Source(
+    title: 'Basic Data Types in Python — Real Python',
+    url: 'https://realpython.com/python-data-types/',
+    description:
+        'Tour of int, float, str, bool, and NoneType with practical '
+        'examples of type conversion, arithmetic, and string operations.',
+  ),
+  Source(
+    title: 'Python\'s Mutable vs Immutable Types — Real Python',
+    url: 'https://realpython.com/python-mutable-vs-immutable-types/',
+    description:
+        'Explains the mutable/immutable distinction, why it matters for '
+        'dict keys and function defaults, and how to use it correctly.',
+  ),
+  Source(
+    title: 'Floating Point Arithmetic: Issues and Limitations — Python Docs',
+    url: 'https://docs.python.org/3/tutorial/floatingpoint.html',
+    description:
+        'Official explanation of why 0.1 + 0.2 != 0.3, and how decimal '
+        'and fractions modules provide exact alternatives.',
   ),
 ];
 

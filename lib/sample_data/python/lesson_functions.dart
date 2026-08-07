@@ -13,13 +13,14 @@ const Lesson functionsLesson = Lesson(
   description:
       'Defining functions, passing arguments in every form Python allows, and '
       'the rules that decide which name wins.',
-  estimatedMinutes: 22,
+  estimatedMinutes: 30,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: _play,
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -74,6 +75,46 @@ print(apply_twice(str.upper, "hi"))    # HI
               'one to a name (f = lambda x: ...) gains nothing over def and '
               'loses the useful name in tracebacks. Use lambda inline, as a '
               'sort key or a small callback.',
+        ),
+        ProseBlock(
+          'Because functions are first-class values, you can use them to build '
+          'dispatch tables — dicts mapping keys to functions — which are often '
+          'cleaner than long if/elif chains. And partial application via '
+          'functools.partial lets you "pre-fill" some arguments of a function, '
+          'creating a new callable with fewer parameters. This is how you '
+          'adapt a function to match a callback signature without writing '
+          'boilerplate wrappers.',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+from functools import partial
+
+# Dispatch table: cleaner than a chain of if/elif.
+def handle_get(request):
+    return "GET " + request
+
+def handle_post(request):
+    return "POST " + request
+
+router = {"GET": handle_get, "POST": handle_post}
+print(router.get("PUT", lambda r: "unknown")( "data"))
+# unknown data — .get() with a default avoids KeyError
+
+# partial: pre-fill arguments to match a callback interface.
+def log(level, message, timestamp=None):
+    return f"[{level}] {message}"
+
+error_log = partial(log, "ERROR")
+print(error_log("disk full"))
+# [ERROR] disk full
+
+# Practical: sort by a computed key without a lambda.
+names = ["grace hopper", "ada lovelace", "alan turing"]
+by_surname = partial(sorted, key=lambda n: n.split()[-1])
+print(by_surname(names))    # ['ada lovelace', 'grace hopper', 'alan turing']
+''',
+          caption: 'Dispatch tables and partial for cleaner callback wiring.',
         ),
       ],
     ),
@@ -132,6 +173,35 @@ print(log(*args, **options))
               'runs — not on each call. Every caller who omits items shares one '
               'growing list. Default to None and build a fresh list inside the '
               'body.',
+        ),
+        ProseBlock(
+          'The / (positional-only) marker is less well known but equally '
+          'important for library authors. Parameters before / cannot be passed '
+          'by keyword. This lets you rename them later without breaking callers '
+          'who may have been using keyword argument syntax. The standard '
+          'library uses this extensively: pow(x, y, /) means you cannot call '
+          'pow(x=2, y=3).',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+# / = everything before is positional-only.
+# * = everything after is keyword-only.
+# Between them = either positional or keyword.
+
+def configure(host, port, /, *, timeout=10, retries=3):
+    """host and port are positional-only; timeout and retries keyword-only."""
+    return f"{host}:{port} (timeout={timeout}, retries={retries})"
+
+print(configure("db.internal", 5432, timeout=5))
+# configure(host="db.internal", port=5432)   -> TypeError
+# configure("db.internal", 5432, 5)          -> TypeError (timeout is keyword-only)
+
+# Standard library example: str.replace(old, new, /, count=-1)
+# The positional-only marker means old and new can be renamed later.
+print("ababab".replace("a", "x", 2))    # xbxbab
+''',
+          caption: 'Positional-only (/) protects parameter names for future refactoring.',
         ),
       ],
     ),
@@ -307,6 +377,45 @@ print(resize.__annotations__["width"])   # <class 'int'>
 print(resize(1, "wide", "tall"))         # runs; nothing checks the types
 ''',
           caption: 'Keyword-only flags read at the call site; hints document.',
+        ),
+        ProseBlock(
+          'Decorators are the natural consequence of first-class functions '
+          'plus closures. A decorator is a function that takes a function '
+          'and returns a replacement (usually a wrapper). Always use '
+          'functools.wraps on your wrapper — it copies __name__, __doc__, '
+          'and __module__ from the original, so help() and tracebacks show '
+          'the real identity rather than "wrapper".',
+        ),
+        CodeBlock(
+          language: 'python',
+          code: '''
+import functools
+import time
+
+
+def timed(fn):
+    """Decorator: prints how long the decorated function took."""
+    @functools.wraps(fn)          # preserves fn's name, docstring, signature
+    def wrapper(*args, **kwargs):
+        start = time.perf_counter()
+        result = fn(*args, **kwargs)
+        elapsed = time.perf_counter() - start
+        print(f"{fn.__name__} took {elapsed:.3f}s")
+        return result
+    return wrapper
+
+
+@timed
+def slow_add(a, b):
+    """Returns the sum after pausing."""
+    time.sleep(0.1)
+    return a + b
+
+print(slow_add(2, 3))
+print(slow_add.__name__, slow_add.__doc__)
+# slow_add took 0.1xxs / 5 / slow_add Returns the sum after pausing.
+''',
+          caption: 'Decorators are closure factories; @wraps keeps metadata intact.',
         ),
       ],
     ),
@@ -501,6 +610,178 @@ print(make_averager()(4))   # 4.0 - independent state
               'No. Appending mutates the object the enclosing name already '
               'points at, and never rebinds the name, so no declaration is '
               'needed. nonlocal is only required for assignment.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-fn-partial',
+      title: 'Simplify callbacks with functools.partial',
+      prompt: [
+        ProseBlock(
+          'You have a logger(log_level, source, message) that takes three '
+          'arguments, but the callback framework only calls its handlers with '
+          'a single (message) argument. Write bind_logger(log_level, source) '
+          'that returns a callable accepting only the message, using '
+          'functools.partial. Then verify the returned function has the right '
+          'signature.',
+        ),
+      ],
+      starterCode: '''
+from functools import partial
+
+
+def logger(log_level, source, message):
+    return f"[{log_level}] {source}: {message}"
+
+
+def bind_logger(log_level, source):
+    # TODO: return a callable with log_level and source pre-filled
+    ...
+
+
+error_log = bind_logger("ERROR", "api")
+print(error_log("connection refused"))
+print(error_log("timeout after 5s"))
+''',
+      solutionCode: '''
+from functools import partial
+
+
+def logger(log_level, source, message):
+    return f"[{log_level}] {source}: {message}"
+
+
+def bind_logger(log_level, source):
+    return partial(logger, log_level, source)
+
+
+error_log = bind_logger("ERROR", "api")
+print(error_log("connection refused"))
+# [ERROR] api: connection refused
+print(error_log("timeout after 5s"))
+# [ERROR] api: timeout after 5s
+
+# partial produces a callable with the right metadata.
+print(error_log.func.__name__)    # logger
+print(error_log.args)             # ('ERROR', 'api')
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'Why use partial instead of a lambda or a nested def?',
+          expectedAnswer:
+              'partial explicitly states intent — "this callable is logger '
+              'with some arguments frozen" — and preserves the original '
+              'function name and metadata via the .func attribute. A lambda '
+              'or def loses that information and is harder to inspect at '
+              'runtime.',
+        ),
+        SelfCheckQuestion(
+          question:
+              'What happens if bind_logger is called with keyword arguments '
+              'like bind_logger(log_level="WARN", source="auth")?',
+          expectedAnswer:
+              'partial freezes positional arguments; keyword arguments from '
+              'bind_logger are forwarded to partial as keyword arguments to '
+              'logger, which also works correctly. logger(log_level="WARN", '
+              'source="auth", message="...") is a valid call.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-fn-decorator',
+      title: 'Write a retry decorator',
+      prompt: [
+        ProseBlock(
+          'Write a decorator @retry(times, delay=0) that re-runs a function '
+          'up to "times" times if it raises an exception, sleeping "delay" '
+          'seconds between attempts. If all attempts fail, re-raise the last '
+          'exception. Use functools.wraps to preserve metadata, and make the '
+          'decorator accept parameters by nesting it one level deeper.',
+        ),
+      ],
+      starterCode: '''
+import functools
+import time
+
+
+def retry(times, delay=0):
+    # TODO: return a decorator that wraps fn with retry logic
+    ...
+
+
+@retry(times=3, delay=0.1)
+def flaky_divide(a, b):
+    # Pretend this sometimes fails.
+    if b == 0:
+        raise ZeroDivisionError("cannot divide by zero")
+    return a / b
+
+
+print(flaky_divide(10, 2))
+# print(flaky_divide(10, 0))   # should retry 3 times, then raise
+''',
+      solutionCode: '''
+import functools
+import time
+
+
+def retry(times, delay=0):
+    def decorator(fn):
+        @functools.wraps(fn)
+        def wrapper(*args, **kwargs):
+            last_exc = None
+            for attempt in range(1, times + 1):
+                try:
+                    return fn(*args, **kwargs)
+                except Exception as exc:
+                    last_exc = exc
+                    if attempt < times:
+                        time.sleep(delay)
+            raise last_exc
+        return wrapper
+    return decorator
+
+
+@retry(times=3, delay=0.1)
+def flaky_divide(a, b):
+    if b == 0:
+        raise ZeroDivisionError("cannot divide by zero")
+    return a / b
+
+
+print(flaky_divide(10, 2))     # 5.0
+
+try:
+    flaky_divide(10, 0)
+except ZeroDivisionError as exc:
+    print("failed after retries:", exc)
+# failed after retries: cannot divide by zero
+
+print(flaky_divide.__name__)   # flaky_divide — @wraps preserved the name
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'Why is retry(times, delay) a function returning a decorator, '
+              'rather than the decorator itself?',
+          expectedAnswer:
+              'A decorator is always called with exactly one argument — the '
+              'function being decorated. To accept parameters, you wrap the '
+              'real decorator in an outer function: retry(times, delay) runs '
+              'first and returns decorator, which Python then calls with the '
+              'function. Without the nesting, @retry would receive the '
+              'function as "times".',
+        ),
+        SelfCheckQuestion(
+          question:
+              'Why are only Exception subclasses caught, not BaseException?',
+          expectedAnswer:
+              'BaseException includes KeyboardInterrupt and SystemExit, which '
+              'are not errors — they are the user or the program asking to '
+              'stop. Retrying on Ctrl-C would hang the program indefinitely.',
         ),
       ],
     ),
@@ -1087,5 +1368,36 @@ const List<Source> _sources = [
     description:
         'The proposal that introduced lexical scoping for nested functions, '
         'with the rationale behind the LEGB name-resolution rules.',
+  ),
+];
+
+const List<Source> _furtherReading = [
+  Source(
+    title: 'Python Scope & the LEGB Rule — Real Python',
+    url: 'https://realpython.com/python-scope-legb-rule/',
+    description:
+        'Comprehensive guide to Python scoping rules with visual diagrams '
+        'and walkthroughs of global vs nonlocal vs local resolution.',
+  ),
+  Source(
+    title: 'Python Closures — Real Python',
+    url: 'https://realpython.com/python-closure/',
+    description:
+        'Deep dive into closures, captured cells, late binding, and the '
+        'functools.partial alternative for factory functions.',
+  ),
+  Source(
+    title: 'Primer on Python Decorators — Real Python',
+    url: 'https://realpython.com/primer-on-python-decorators/',
+    description:
+        'Step-by-step tutorial on writing decorators, parameterised decorators, '
+        'and using functools.wraps to preserve metadata.',
+  ),
+  Source(
+    title: 'PEP 3102 – Keyword-Only Arguments',
+    url: 'https://peps.python.org/pep-3102/',
+    description:
+        'The PEP that introduced the bare * syntax for keyword-only parameters, '
+        'with usage examples and design rationale.',
   ),
 ];

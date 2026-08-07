@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../models/topic.dart';
 import '../state/lesson_library.dart';
+import '../state/progress_provider.dart';
 import '../theme/design_tokens.dart';
 import 'icon_mapping.dart';
 
@@ -109,6 +110,11 @@ class _TopicNode extends StatelessWidget {
                   label: lesson.title,
                   indent: AppSpacing.xxl + AppSpacing.md,
                   selected: lesson.id == selectedLessonId,
+                  // Watched per-leaf rather than once for the whole tree, so
+                  // completing a lesson only repaints its own row.
+                  complete: context.select<ProgressProvider, bool>(
+                    (ProgressProvider p) => p.progressFor(lesson.id).isComplete,
+                  ),
                   onTap: () => onOpenLesson(lesson.id),
                   style: theme.textTheme.bodySmall,
                 ),
@@ -127,6 +133,7 @@ class _TreeLeaf extends StatelessWidget {
     required this.indent,
     required this.onTap,
     this.selected = false,
+    this.complete = false,
     this.style,
   });
 
@@ -134,6 +141,11 @@ class _TreeLeaf extends StatelessWidget {
   final double indent;
   final VoidCallback onTap;
   final bool selected;
+
+  /// Whether every mode of this lesson is done — shown as a small check so
+  /// finished lessons stay legible while browsing, not only inside the
+  /// lesson itself.
+  final bool complete;
   final TextStyle? style;
 
   @override
@@ -162,12 +174,27 @@ class _TreeLeaf extends StatelessWidget {
             ),
           ),
           alignment: Alignment.centerLeft,
-          child: Text(
-            label,
-            style: style?.copyWith(
-              color: selected ? colors.onSurface : style?.color,
-              fontWeight: selected ? FontWeight.w700 : style?.fontWeight,
-            ),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  label,
+                  style: style?.copyWith(
+                    color: selected ? colors.onSurface : style?.color,
+                    fontWeight: selected ? FontWeight.w700 : style?.fontWeight,
+                  ),
+                ),
+              ),
+              if (complete) ...<Widget>[
+                const SizedBox(width: AppSpacing.xxs),
+                Icon(
+                  Icons.check,
+                  size: 14,
+                  color: colors.primary,
+                  semanticLabel: 'Complete',
+                ),
+              ],
+            ],
           ),
         ),
       ),

@@ -15,13 +15,14 @@ const Lesson overfittingLesson = Lesson(
       'Diagnosing the gap between training and validation loss, and the four '
       'standard fixes — dropout, weight decay, early stopping and data '
       'augmentation.',
-  estimatedMinutes: 29,
+  estimatedMinutes: 36,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -716,6 +717,90 @@ print("without decay:", without_decay, total_magnitude(without_decay))
         ),
       ],
     ),
+    Exercise(
+      id: 'ex-of-early-stop',
+      title: 'Implement early stopping with checkpoint restoration',
+      prompt: [
+        ProseBlock(
+          'Write an early_stopping loop that, given per-epoch validation '
+          'loss values, returns (best_epoch, best_loss) and the restored '
+          'loss. Track the best loss seen so far, with patience=3 and '
+          'min_delta=1e-4. The function should simulate a training loop '
+          'that stops when patience runs out and returns the best epoch.',
+        ),
+      ],
+      starterCode: '''
+train_loss = [0.92, 0.61, 0.44, 0.33, 0.26, 0.21, 0.17, 0.14, 0.11, 0.09,
+              0.08, 0.07, 0.06, 0.05, 0.04, 0.035, 0.031, 0.028, 0.026, 0.025]
+val_loss   = [0.95, 0.68, 0.52, 0.45, 0.43, 0.44, 0.47, 0.52, 0.58, 0.65,
+              0.71, 0.76, 0.80, 0.83, 0.85, 0.87, 0.88, 0.89, 0.90, 0.90]
+
+
+def early_stop(val_loss, patience=3, min_delta=1e-4):
+    """Return (best_epoch, best_loss). Best epoch is 0-indexed."""
+    # TODO: track best loss, wait counter, return best epoch
+    ...
+
+
+best_epoch, best_loss = early_stop(val_loss)
+print(f"Stopped at epoch {len(val_loss)} (would be), best at epoch {best_epoch}")
+print(f"Best val loss: {best_loss:.4f}")
+print(f"Training loss at best epoch: {train_loss[best_epoch]:.4f}")
+''',
+      solutionCode: '''
+train_loss = [0.92, 0.61, 0.44, 0.33, 0.26, 0.21, 0.17, 0.14, 0.11, 0.09,
+              0.08, 0.07, 0.06, 0.05, 0.04, 0.035, 0.031, 0.028, 0.026, 0.025]
+val_loss   = [0.95, 0.68, 0.52, 0.45, 0.43, 0.44, 0.47, 0.52, 0.58, 0.65,
+              0.71, 0.76, 0.80, 0.83, 0.85, 0.87, 0.88, 0.89, 0.90, 0.90]
+
+
+def early_stop(val_loss, patience=3, min_delta=1e-4):
+    """Return (best_epoch, best_loss). Best epoch is 0-indexed."""
+    best_loss = float("inf")
+    best_epoch = 0
+    wait = 0
+
+    for epoch, loss in enumerate(val_loss):
+        if loss < best_loss - min_delta:
+            best_loss = loss
+            best_epoch = epoch
+            wait = 0
+        else:
+            wait += 1
+        if wait >= patience:
+            break
+
+    return best_epoch, best_loss
+
+
+best_epoch, best_loss = early_stop(val_loss)
+print(f"Best epoch: {best_epoch}")                  # 4
+print(f"Best val loss: {best_loss:.4f}")             # 0.43
+print(f"Training loss at best epoch: {train_loss[best_epoch]:.4f}")  # 0.26
+
+# After epoch 4, val_loss climbs (0.44, 0.47, 0.52, ...) and patience
+# of 3 means we stop at epoch 7. But we restore epoch 4, not epoch 7.
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'Why not just stop at the epoch where validation loss first '
+              'increases? What does patience protect against?',
+          expectedAnswer:
+              'Validation loss is noisy — it can increase for one epoch '
+              'due to a bad batch, an unfavourable shuffle, or random '
+              'fluctuation, then resume improving the next epoch. Stopping '
+              'on the first rise would discard runs that would have '
+              'recovered. Patience sets how many consecutive non-improving '
+              'epochs you tolerate before concluding the trend is real. '
+              'The min_delta parameter further filters out trivial '
+              '"improvements" less than the noise floor, so patience does '
+              'not reset on fluctuations that are too small to be '
+              'meaningful.',
+        ),
+      ],
+    ),
   ],
 );
 
@@ -1339,5 +1424,40 @@ const List<Source> _sources = [
         'The paper behind AdamW, explaining why L2-through-the-gradient and '
         'true weight decay differ for adaptive optimisers as covered in the '
         'weight decay deep dive.',
+  ),
+];
+
+const List<Source> _furtherReading = <Source>[
+  Source(
+    title: 'Dropout: A Simple Way to Prevent Neural Networks from Overfitting',
+    url: 'https://jmlr.org/papers/v15/srivastava14a.html',
+    description:
+        'The definitive dropout paper (Srivastava et al., 2014), establishing '
+        'the technique with experiments across vision, speech and text '
+        'domains demonstrating consistent generalisation improvements.',
+  ),
+  Source(
+    title: 'Fixing Weight Decay Regularization in Adam (Loshchilov & Hutter)',
+    url: 'https://arxiv.org/abs/1711.05101',
+    description:
+        'Full AdamW paper showing why L2-regularisation and weight decay '
+        'diverge for adaptive optimisers, with the decoupled fix that '
+        'restored competitive generalisation for Adam on image benchmarks.',
+  ),
+  Source(
+    title: 'mixup: Beyond Empirical Risk Minimization',
+    url: 'https://arxiv.org/abs/1710.09412',
+    description:
+        'A data augmentation technique that blends pairs of training examples '
+        'and their labels, producing a strong regularising effect and '
+        'improving calibration and robustness to adversarial examples.',
+  ),
+  Source(
+    title: 'Early Stopping — But When? (Prechelt, 1998)',
+    url: 'https://link.springer.com/chapter/10.1007/3-540-49430-8_3',
+    description:
+        'The classic empirical study of early stopping criteria, comparing '
+        'validation-based, generalisation-loss and other stopping rules '
+        'in practical neural network training.',
   ),
 ];

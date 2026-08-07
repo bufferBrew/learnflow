@@ -15,13 +15,14 @@ const Lesson toolsFunctionCallingLesson = Lesson(
       'The mechanics of tool calling, writing tool descriptions that '
       'actually get used correctly, error handling, and the Model Context '
       'Protocol.',
-  estimatedMinutes: 28,
+  estimatedMinutes: 36,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -311,6 +312,35 @@ def execute_tool_safely(name, args, tools):
               'describe what went wrong in the tool result text itself, so '
               'the model\'s next decision is informed by the failure rather '
               'than blind to it.',
+        ),
+        CollapsibleBlock(
+          title: 'Deep dive: structured vs unstructured tool outputs',
+          children: [
+            ProseBlock(
+              'The format of tool results matters nearly as much as the '
+              'format of tool definitions. When a tool returns raw JSON, '
+              'the model must parse that JSON in its "mind" (attention) to '
+              'extract the relevant field. This works most of the time, but '
+              'long JSON blobs with deeply nested structures can exceed the '
+              'model\'s effective reasoning span. A practical trick: pre-'
+              'process tool outputs into concise natural language summaries '
+              'before feeding them back. Instead of returning a 200-line '
+              'JSON order object, return "Order #12345: placed Aug 7, \$49.99, '
+              'status: shipped, ETA Aug 10." The model reasons over prose '
+              'more reliably than over raw structured data.',
+            ),
+            ProseBlock(
+              'For numeric and tabular tool outputs, consider adding a brief '
+              '"human-readable interpretation" alongside the structured data. '
+              'A weather API that returns {"temp": 72, "humidity": 0.45, '
+              '"conditions": "partly cloudy"} is fine, but adding "Currently '
+              '72°F, 45% humidity, partly cloudy" as a summary line reduces '
+              'the chance the model misreads the humidity as a percentage '
+              '(0.45 vs 45) or confuses temperature units. These small '
+              'format decisions compound across the dozens of tool calls a '
+              'typical agent makes in a single task.',
+            ),
+          ],
         ),
       ],
     ),
@@ -626,6 +656,131 @@ for name, args in calls:
               'the model, so developers can see real bugs in logs and '
               'monitoring even though the model only ever sees a description '
               'it can act on.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-parallel-tool-calls',
+      title: 'Route independent tool calls in parallel',
+      prompt: [
+        ProseBlock(
+          'Implement execute_parallel(tool_calls, tools) that takes a list '
+          'of (name, args) tuples and returns a list of result strings, one '
+          'per call. Calls that are independent of each other should be '
+          'conceptually parallelizable — in this exercise, run them '
+          'sequentially but structure the code so the calls do not depend '
+          'on each other\'s results.',
+        ),
+        ProseBlock(
+          'Then write can_parallelize(call_a, call_b) that returns False if '
+          'call_b\'s arguments reference the result of call_a by name '
+          '(simulating a dependency), and True otherwise.',
+        ),
+      ],
+      starterCode: '''
+def get_weather(location):
+    return f"{location}: 72F, sunny"
+
+
+def get_timezone(location):
+    return f"{location}: America/Los_Angeles"
+
+
+def search_flights(origin, destination):
+    return f"Flights from {origin} to {destination}: 3 found"
+
+
+TOOLS = {
+    "get_weather": get_weather,
+    "get_timezone": get_timezone,
+    "search_flights": search_flights,
+}
+
+
+def execute_parallel(tool_calls, tools):
+    """Execute each (name, args) and return list of result strings."""
+    ...
+
+
+def can_parallelize(call_a, call_b):
+    """Return False if call_b depends on call_a's result."""
+    ...
+
+
+calls = [
+    ("get_weather", {"location": "SF"}),
+    ("get_timezone", {"location": "SF"}),
+    ("search_flights", {"origin": "SF", "destination": "NYC"}),
+]
+results = execute_parallel(calls, TOOLS)
+for (name, args), result in zip(calls, results):
+    print(f"{name}{args} -> {result!r}")
+''',
+      solutionCode: '''
+def get_weather(location):
+    return f"{location}: 72F, sunny"
+
+
+def get_timezone(location):
+    return f"{location}: America/Los_Angeles"
+
+
+def search_flights(origin, destination):
+    return f"Flights from {origin} to {destination}: 3 found"
+
+
+TOOLS = {
+    "get_weather": get_weather,
+    "get_timezone": get_timezone,
+    "search_flights": search_flights,
+}
+
+
+def execute_parallel(tool_calls, tools):
+    return [tools[name](**args) for name, args in tool_calls]
+
+
+def can_parallelize(call_a, call_b):
+    """call_b depends on call_a if any of call_b's arg values reference
+    call_a's tool name (e.g. {'location': '\$get_weather.result'})."""
+    name_a = call_a[0]
+    for val in call_b[1].values():
+        if isinstance(val, str) and name_a in val:
+            return False
+    return True
+
+
+calls = [
+    ("get_weather", {"location": "SF"}),
+    ("get_timezone", {"location": "SF"}),
+    ("search_flights", {"origin": "SF", "destination": "NYC"}),
+]
+results = execute_parallel(calls, TOOLS)
+for (name, args), result in zip(calls, results):
+    print(f"{name}{args} -> {result!r}")
+
+# get_weather{'location': 'SF'} -> 'SF: 72F, sunny'
+# get_timezone{'location': 'SF'} -> 'SF: America/Los_Angeles'
+# search_flights{'origin': 'SF', 'destination': 'NYC'} -> 'Flights from SF to NYC: 3 found'
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'All three calls in this example are independent. What would '
+              'happen if search_flights needed get_weather\'s result first — '
+              'say, to check if weather at the destination is acceptable — '
+              'and why does that break parallel execution?',
+          expectedAnswer:
+              'If search_flights depends on get_weather\'s result, the two '
+              'calls must be serialized: get_weather runs first, its result '
+              'is observed by the agent, and only then can search_flights '
+              'be called with the weather-informed parameters. Parallel '
+              'execution would launch both calls simultaneously, meaning '
+              'search_flights runs without seeing get_weather\'s result — '
+              'it would either fail or use a stale/guessed parameter. This '
+              'is exactly why the lesson says parallel tool calls only make '
+              'sense when calls are genuinely independent.',
         ),
       ],
     ),
@@ -1257,5 +1412,36 @@ const List<Source> _sources = [
         'The official overview of MCP\'s client/server architecture, '
         'source for this lesson\'s deep dive on a provider-agnostic standard '
         'for exposing tools to models.',
+  ),
+];
+
+const List<Source> _furtherReading = <Source>[
+  Source(
+    title: 'Function Calling Best Practices — OpenAI Cookbook',
+    url: 'https://cookbook.openai.com/examples/how_to_call_functions_with_chat_models',
+    description:
+        'OpenAI\'s official cookbook with patterns for parallel function calling, '
+        'tool choice control, and error recovery strategies.',
+  ),
+  Source(
+    title: 'Gorilla: Large Language Model Connected with Massive APIs (Patil et al., 2023)',
+    url: 'https://arxiv.org/abs/2305.15334',
+    description:
+        'Research on training LLMs to call real-world APIs reliably, including '
+        'the API-Bench benchmark and findings on tool description quality.',
+  ),
+  Source(
+    title: 'Model Context Protocol — GitHub Repository',
+    url: 'https://github.com/modelcontextprotocol',
+    description:
+        'The official MCP GitHub organization with server implementations for '
+        'Postgres, GitHub, Slack, and filesystem tools — installable and ready to use.',
+  ),
+  Source(
+    title: 'Tool Calling in LangChain: Providers and Best Practices',
+    url: 'https://python.langchain.com/docs/concepts/tool_calling/',
+    description:
+        'LangChain\'s cross-provider tool-calling abstraction showing how OpenAI, Anthropic, '
+        'and other providers map to a unified interface — the pattern sketched in this lesson.',
   ),
 ];

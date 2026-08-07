@@ -14,13 +14,14 @@ const Lesson transformersLesson = Lesson(
   description:
       'Self-attention, queries/keys/values, multi-head attention and '
       'positional encoding — how a sequence model became fully parallel.',
-  estimatedMinutes: 31,
+  estimatedMinutes: 38,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -805,6 +806,115 @@ print(pe[:, 2:4].ptp(axis=0).round(3))    # [0.03  0.   ]
         ),
       ],
     ),
+    Exercise(
+      id: 'ex-tfm-causal-mask',
+      title: 'Build the causal attention mask',
+      prompt: [
+        ProseBlock(
+          'Implement causal_mask(n) that returns an n×n mask matrix '
+          'where position i can attend to positions 0 through i '
+          '(inclusive). Use -inf for forbidden positions. Then use it '
+          'with the attention function from the earlier exercise to '
+          'verify that position 0 only attends to itself while position '
+          'n-1 attends to everything.',
+        ),
+      ],
+      starterCode: '''
+import numpy as np
+
+
+def causal_mask(n):
+    """Return (n, n) mask: mask[i, j] = 0 if j <= i, else -inf."""
+    ...
+
+
+def softmax(z):
+    z = z - z.max(axis=-1, keepdims=True)
+    e = np.exp(z)
+    return e / e.sum(axis=-1, keepdims=True)
+
+
+def attention(q, k, v, mask=None):
+    d_k = q.shape[-1]
+    scores = q @ k.T / np.sqrt(d_k)
+    if mask is not None:
+        scores = scores + mask    # -inf in forbidden positions
+    weights = softmax(scores)
+    return weights @ v, weights
+
+
+# Test with 4 random tokens, 4 dimensions each.
+rng = np.random.default_rng(0)
+x = rng.normal(size=(4, 4))
+out, w = attention(x, x, x, mask=causal_mask(4))
+print("Attention weights (should be lower-triangular):")
+print(w.round(3))
+# TODO: verify row 0 only attends to position 0
+# TODO: verify row 3 attends to all 4 positions
+''',
+      solutionCode: '''
+import numpy as np
+
+
+def causal_mask(n):
+    """Return (n, n) mask: mask[i, j] = 0 if j <= i, else -inf."""
+    mask = np.zeros((n, n))
+    for i in range(n):
+        for j in range(n):
+            if j > i:            # position i cannot see position j
+                mask[i, j] = -np.inf
+    return mask
+
+
+def softmax(z):
+    z = z - z.max(axis=-1, keepdims=True)
+    e = np.exp(z)
+    return e / e.sum(axis=-1, keepdims=True)
+
+
+def attention(q, k, v, mask=None):
+    d_k = q.shape[-1]
+    scores = q @ k.T / np.sqrt(d_k)
+    if mask is not None:
+        scores = scores + mask
+    weights = softmax(scores)
+    return weights @ v, weights
+
+
+rng = np.random.default_rng(0)
+x = rng.normal(size=(4, 4))
+out, w = attention(x, x, x, mask=causal_mask(4))
+print("Attention weights (lower-triangular):")
+print(w.round(3))
+
+# Row 0: only position 0 has non-zero weight (sums to 1.0)
+assert w[0, 0] > 0.99, "Position 0 should only attend to itself"
+# Row 3: all positions 0-3 have non-zero weight
+assert np.all(w[3] > 0), "Position 3 should attend to all tokens"
+# Upper triangle (j > i) should be zero
+assert np.allclose(w[0, 1:], 0), "Upper triangle must be zero"
+print("All assertions passed!")
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'What happens if you forget the causal mask in a decoder-only '
+              'transformer during training?',
+          expectedAnswer:
+              'Without the mask, every position can attend to every other '
+              'position including future ones. During training the model '
+              'can simply copy the correct next token from the input — '
+              'the training loss drops to nearly zero, but the model has '
+              'learned nothing about prediction. At inference time, when '
+              'future tokens are not available, it produces random or '
+              'degenerate output because it never actually learned to '
+              'predict the next token from the prefix alone. The mask is '
+              'not an optimisation detail; it is the structural constraint '
+              'that makes the autoregressive objective meaningful.',
+        ),
+      ],
+    ),
   ],
 );
 
@@ -1435,5 +1545,40 @@ const List<Source> _sources = [
         'A practical walkthrough of the encoder-only, decoder-only and '
         'encoder-decoder families and which tasks each suits, matching the '
         'deep-dive section of this lesson.',
+  ),
+];
+
+const List<Source> _furtherReading = <Source>[
+  Source(
+    title: 'The Illustrated Transformer (Alammar, 2018)',
+    url: 'https://jalammar.github.io/illustrated-transformer/',
+    description:
+        'Widely-cited visual walkthrough of self-attention, multi-head '
+        'attention and positional encoding with step-by-step diagrams '
+        'that directly complement the code in this lesson.',
+  ),
+  Source(
+    title: 'FlashAttention: Fast and Memory-Efficient Exact Attention',
+    url: 'https://arxiv.org/abs/2205.14135',
+    description:
+        'The paper that removed the memory bottleneck of standard attention '
+        'by tiling the computation to avoid materialising the full N×N '
+        'matrix, making long-context training practical.',
+  ),
+  Source(
+    title: 'RoFormer: Enhanced Transformer with Rotary Position Embedding',
+    url: 'https://arxiv.org/abs/2104.09864',
+    description:
+        'Introduces RoPE, the relative position encoding used in LLaMA '
+        'and most modern open-weight models, which encodes position as '
+        'a rotation of the query and key vectors.',
+  ),
+  Source(
+    title: 'The Annotated Transformer — Harvard NLP',
+    url: 'https://nlp.seas.harvard.edu/annotated-transformer/',
+    description:
+        'Line-by-line annotated implementation of the original transformer '
+        'paper in PyTorch, with detailed commentary on every component '
+        'from attention to the training loop.',
   ),
 ];

@@ -18,13 +18,14 @@ const Lesson agenticRagWorkflowsLesson = Lesson(
       'pipeline stage — iterative research loops, self-grading, corrective '
       'fallback, and the failure modes unique to letting an agent drive '
       'retrieval.',
-  estimatedMinutes: 30,
+  estimatedMinutes: 38,
   read: _read,
   practice: _practice,
   podcast: _podcast,
   play: GameContent(games: <Game>[]),
   review: _review,
   sources: _sources,
+  furtherReading: _furtherReading,
 );
 
 const ReadContent _read = ReadContent(
@@ -469,6 +470,32 @@ def corrective_retrieve(query, local_retriever, web_search, llm):
               'than guess — hitting the budget should produce an honest '
               'admission, not a confident answer built on thin context.',
         ),
+        CollapsibleBlock(
+          title: 'Deep dive: agentic vs pipeline RAG — a cost/quality matrix',
+          children: [
+            ProseBlock(
+              'The decision between pipeline and agentic RAG is ultimately a '
+              'business decision disguised as a technical one. Pipeline RAG '
+              'has fixed, predictable latency and cost per query — one '
+              'retrieval call, one LLM generation. Agentic RAG has variable '
+              'latency and cost — some queries finish in one round, some '
+              'take three, and a confused query might hit the step budget. '
+              'If every query needs to return in under 500ms with a hard '
+              'guarantee, pipeline RAG is the safer choice regardless of '
+              'quality improvements from agentic control.',
+            ),
+            ProseBlock(
+              'A pragmatic compromise emerging in production: use a fast, '
+              'cheap model (like a small Llama or Claude Haiku) for the '
+              'grading and reformulation decisions, and reserve the expensive '
+              'model (GPT-4o, Claude Sonnet/Opus) only for the final answer '
+              'generation. The grading step needs much less capability than '
+              'synthesis, so this two-tier approach gets most of the quality '
+              'benefit of agentic RAG at a fraction of the cost of running '
+              'every grading call through the full-capability model.',
+            ),
+          ],
+        ),
         ProseBlock(
           'None of this argues against plain, single-shot RAG as a default. '
           'A well-scoped question against a corpus where the right passage '
@@ -814,6 +841,153 @@ for q in [
               'than competing to answer the same part. Only when local '
               'retrieval found nothing relevant at all does discarding it '
               'entirely make sense, because there is nothing worth keeping.',
+        ),
+      ],
+    ),
+    Exercise(
+      id: 'ex-corrective-fallback',
+      title: 'Implement CRAG-style corrective fallback',
+      prompt: [
+        ProseBlock(
+          'Implement corrective_retrieve(query, local_retriever, '
+          'web_search, grader, threshold=2) that retrieves from a local '
+          'knowledge base first, grades each chunk for relevance, and falls '
+          'back to web search if fewer than threshold relevant chunks are '
+          'found — exactly the three-way CRAG pattern from the lesson.',
+        ),
+        ProseBlock(
+          'The grader is a stub function that returns "relevant" or '
+          '"irrelevant". The local retriever and web_search are also stubs. '
+          'Focus on the control flow: use local results, supplement, or '
+          'discard-and-fallback.',
+        ),
+      ],
+      starterCode: '''
+def local_retrieve(query, k=3):
+    docs = {
+        "refund": [
+            "Our refund policy allows returns within 30 days.",
+            "Refunds are processed within 5-7 business days.",
+        ],
+        "shipping": [
+            "Free shipping on orders over \$50.",
+            "International shipping takes 7-14 business days.",
+        ],
+    }
+    for key in docs:
+        if key in query.lower():
+            return docs[key][:k]
+    return []
+
+
+def web_search(query, k=2):
+    return [
+        f"Web result for '{query}': Competitor offers 60-day returns.",
+        f"Web result for '{query}': Industry average is 30-day returns.",
+    ]
+
+
+def grader(query, chunk):
+    """Stub: a chunk is relevant if the query keyword appears in it."""
+    for word in query.lower().split():
+        if len(word) > 3 and word in chunk.lower():
+            return "relevant"
+    return "irrelevant"
+
+
+def corrective_retrieve(query, local_retriever, web_search, grader, threshold=2):
+    """CRAG pattern: grade local, fall back to web if insufficient."""
+    ...
+
+
+# Test 1: query well-covered by local KB
+result, source = corrective_retrieve(
+    "What is the refund policy?", local_retrieve, web_search, grader
+)
+print(f"source: {source}, chunks: {len(result)}")
+
+# Test 2: query not in local KB at all
+result, source = corrective_retrieve(
+    "What is the competitor policy?", local_retrieve, web_search, grader
+)
+print(f"source: {source}, chunks: {len(result)}")
+''',
+      solutionCode: '''
+def local_retrieve(query, k=3):
+    docs = {
+        "refund": [
+            "Our refund policy allows returns within 30 days.",
+            "Refunds are processed within 5-7 business days.",
+        ],
+        "shipping": [
+            "Free shipping on orders over \$50.",
+            "International shipping takes 7-14 business days.",
+        ],
+    }
+    for key in docs:
+        if key in query.lower():
+            return docs[key][:k]
+    return []
+
+
+def web_search(query, k=2):
+    return [
+        f"Web result for '{query}': Competitor offers 60-day returns.",
+        f"Web result for '{query}': Industry average is 30-day returns.",
+    ]
+
+
+def grader(query, chunk):
+    for word in query.lower().split():
+        if len(word) > 3 and word in chunk.lower():
+            return "relevant"
+    return "irrelevant"
+
+
+def corrective_retrieve(query, local_retriever, web_search, grader, threshold=2):
+    local = local_retriever(query)
+    relevant = [c for c in local if grader(query, c) == "relevant"]
+
+    if len(relevant) >= threshold:
+        return relevant, "local"
+
+    if relevant:
+        supplement = web_search(query, k=2)
+        return relevant + supplement, "local+web"
+
+    return web_search(query, k=2), "web"
+
+
+# Test 1
+result, source = corrective_retrieve(
+    "What is the refund policy?", local_retrieve, web_search, grader
+)
+print(f"source: {source}, chunks: {len(result)}")
+# source: local, chunks: 2
+
+# Test 2
+result, source = corrective_retrieve(
+    "What is the competitor policy?", local_retrieve, web_search, grader
+)
+print(f"source: {source}, chunks: {len(result)}")
+# source: web, chunks: 2
+''',
+      language: 'python',
+      selfChecks: [
+        SelfCheckQuestion(
+          question:
+              'Why does the corrective pattern return the source ("local", '
+              '"local+web", "web") alongside the chunks, rather than just '
+              'returning the chunks?',
+          expectedAnswer:
+              'The source label tells the generator — and any downstream '
+              'monitoring — where the information came from, which matters '
+              'for citation and trust. A chunk from "web" should be cited '
+              'differently than one from "local" (internal docs). More '
+              'importantly, a monitoring system can alert if the web '
+              'fallback is triggered too often, indicating the local '
+              'knowledge base has gaps that should be filled. Without the '
+              'source label, there is no signal that fallback even occurred.',
         ),
       ],
     ),
@@ -1546,5 +1720,36 @@ const List<Source> _sources = [
         'retrieve, grades retrieved document relevance, and rewrites the '
         'query on a failed grade — the concrete architecture this lesson\'s '
         'agentic_retrieve code sketches in plain Python.',
+  ),
+];
+
+const List<Source> _furtherReading = <Source>[
+  Source(
+    title: 'REALM: Retrieval-Augmented Language Model Pre-Training (Guu et al., 2020)',
+    url: 'https://arxiv.org/abs/2002.08909',
+    description:
+        'Google\'s REALM paper: the first system to jointly pre-train a retriever and generator, '
+        'the conceptual predecessor to both RAG and agentic retrieval patterns.',
+  ),
+  Source(
+    title: 'ActiveRAG: A Teaching-and-Testing Framework for RAG (Li et al., 2024)',
+    url: 'https://arxiv.org/abs/2405.15211',
+    description:
+        'ActiveRAG framework where an agent actively decides what to retrieve next based on '
+        'knowledge gaps identified mid-generation, extending the iterative research loop.',
+  ),
+  Source(
+    title: 'FLARE: Active Retrieval Augmented Generation (Jiang et al., 2023)',
+    url: 'https://arxiv.org/abs/2305.06983',
+    description:
+        'Forward-Looking Active REtrieval: an agent predicts upcoming sentences and '
+        'retrieves relevant documents before generating them, an anticipatory variant of the iterative loop.',
+  ),
+  Source(
+    title: 'Adaptive RAG: Learning When to Retrieve (Jeong et al., 2024)',
+    url: 'https://arxiv.org/abs/2403.14403',
+    description:
+        'Trains a classifier to decide per-query whether retrieval is necessary, balancing the '
+        'over-retrieval and under-retrieval failure modes discussed in this lesson.',
   ),
 ];
