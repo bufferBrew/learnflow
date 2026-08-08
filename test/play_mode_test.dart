@@ -126,6 +126,35 @@ void main() {
       expect(find.text('GAME 1 OF 2 · Output Predictor'), findsOneWidget);
       expect(find.text('PYTHON'), findsOneWidget);
     });
+
+    testWidgets('the grid cell height matches the base extent at the default text scale', (
+      WidgetTester tester,
+    ) async {
+      await _pump(tester, _lessonWithGames);
+
+      final SliverGridDelegateWithFixedCrossAxisCount delegate =
+          tester.widget<GridView>(find.byType(GridView)).gridDelegate
+              as SliverGridDelegateWithFixedCrossAxisCount;
+
+      expect(delegate.mainAxisExtent, 108);
+    });
+
+    testWidgets(
+      'the grid cell height grows with a larger text scale, without overflowing',
+      (WidgetTester tester) async {
+        tester.platformDispatcher.textScaleFactorTestValue = 1.2;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+        await _pump(tester, _lessonWithGames);
+
+        final SliverGridDelegateWithFixedCrossAxisCount delegate =
+            tester.widget<GridView>(find.byType(GridView)).gridDelegate
+                as SliverGridDelegateWithFixedCrossAxisCount;
+
+        expect(delegate.mainAxisExtent, closeTo(129.6, 0.01));
+        expect(tester.takeException(), isNull);
+      },
+    );
   });
 
   group('PlayModeScreen player', () {
@@ -140,7 +169,9 @@ void main() {
       await tester.tap(find.text('2'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Correct'), findsOneWidget);
+      // Twice: the feedback banner's heading, and the marker naming which
+      // option was the right one.
+      expect(find.text('Correct'), findsNWidgets(2));
       expect(find.text('Next game'), findsOneWidget);
 
       await tester.tap(find.text('Next game'));

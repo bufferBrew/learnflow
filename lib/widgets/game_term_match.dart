@@ -234,32 +234,71 @@ class _MatchTile extends StatelessWidget {
     };
     final bool selected = state == _TileState.selected;
     final bool disabled = state == _TileState.matched;
+    final Duration motion = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : AppMotion.fast;
+
+    // Matched green and mismatch amber are one hue apart; the glyph and the
+    // spoken state carry the same information without relying on colour.
+    final IconData? glyph = switch (state) {
+      _TileState.matched => Icons.check,
+      _TileState.wrong => Icons.close,
+      _TileState.selected || _TileState.normal => null,
+    };
+    final String stateLabel = switch (state) {
+      _TileState.matched => ', matched',
+      _TileState.wrong => ', not a match',
+      _TileState.selected => ', selected',
+      _TileState.normal => '',
+    };
 
     return Material(
       color: tone?.background ?? colors.surfaceContainerLowest,
       borderRadius: AppRadius.allSm,
-      child: InkWell(
-        onTap: disabled ? null : onTap,
-        borderRadius: AppRadius.allSm,
-        child: AnimatedContainer(
-          duration: AppMotion.fast,
-          constraints: const BoxConstraints(minHeight: AppDimensions.minTouchTarget),
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
-          decoration: BoxDecoration(
-            borderRadius: AppRadius.allSm,
-            border: Border.all(
-              color: tone?.border ?? (selected ? colors.primary : colors.outlineVariant),
-              width: selected || tone != null ? AppStroke.emphasis : AppStroke.hairline,
+      child: Semantics(
+        container: true,
+        button: !disabled,
+        selected: selected,
+        label: '$text$stateLabel',
+        child: InkWell(
+          onTap: disabled ? null : onTap,
+          borderRadius: AppRadius.allSm,
+          child: AnimatedContainer(
+            duration: motion,
+            constraints: const BoxConstraints(minHeight: AppDimensions.minTouchTarget),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.xs,
             ),
-          ),
-          alignment: Alignment.centerLeft,
-          child: Text(
-            text,
-            style:
-                (emphasise ? theme.textTheme.titleSmall : theme.textTheme.bodySmall)?.copyWith(
-                  color: tone?.foreground ?? colors.onSurface,
-                  fontWeight: emphasise ? FontWeight.w700 : FontWeight.w400,
-                ),
+            decoration: BoxDecoration(
+              borderRadius: AppRadius.allSm,
+              border: Border.all(
+                color: tone?.border ?? (selected ? colors.primary : colors.outlineVariant),
+                width: selected || tone != null ? AppStroke.emphasis : AppStroke.hairline,
+              ),
+            ),
+            alignment: Alignment.centerLeft,
+            child: ExcludeSemantics(
+              child: Row(
+                children: <Widget>[
+                  if (glyph != null) ...<Widget>[
+                    Icon(glyph, size: 16, color: tone?.foreground),
+                    const SizedBox(width: AppSpacing.xs),
+                  ],
+                  Flexible(
+                    child: Text(
+                      text,
+                      style:
+                          (emphasise ? theme.textTheme.titleSmall : theme.textTheme.bodySmall)
+                              ?.copyWith(
+                                color: tone?.foreground ?? colors.onSurface,
+                                fontWeight: emphasise ? FontWeight.w700 : FontWeight.w400,
+                              ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),

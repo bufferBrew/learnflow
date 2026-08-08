@@ -90,13 +90,16 @@ class _LessonDetailScreenState extends State<LessonDetailScreen> {
             preferredSize: const Size.fromHeight(AppDimensions.minTouchTarget),
             child: LayoutBuilder(
               builder: (BuildContext context, BoxConstraints constraints) {
-                // Wide: tabs stay anchored to the left margin rather than
-                // stretching across the pane. Narrow: all four stay visible
-                // instead of scrolling out of reach.
+                // Both branches anchor the tabs to the left margin rather than
+                // stretching them across the pane. Five labels do not fit a
+                // phone width at their natural size, and they fit even less
+                // once text scaling is raised, so the narrow branch scrolls —
+                // a tab clipped at the edge is the affordance that says more
+                // are there, which a row of truncated labels never does.
                 final bool wide = constraints.maxWidth >= AppBreakpoints.wideContent;
                 return TabBar(
-                  isScrollable: wide,
-                  tabAlignment: wide ? TabAlignment.start : TabAlignment.fill,
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
                   labelPadding: EdgeInsets.symmetric(
                     horizontal: wide ? AppSpacing.md : AppSpacing.xs,
                   ),
@@ -148,8 +151,8 @@ class _ModeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Text only: four labelled tabs fit a 320px viewport without scrolling,
-    // and the mode's icon still appears in the pane itself.
+    // Text only: the label carries the mode on its own, and the mode's icon
+    // still appears in the pane itself.
     return Tab(
       height: AppDimensions.minTouchTarget,
       child: Text(

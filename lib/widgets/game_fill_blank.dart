@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/game.dart';
+import '../theme/color_schemes.dart';
 import '../theme/design_tokens.dart';
 import 'game_feedback_banner.dart';
 
@@ -208,6 +209,11 @@ class _BlankField extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme colors = theme.colorScheme;
+    final CalloutPalette palette =
+        theme.extension<CalloutPalette>() ??
+        (theme.brightness == Brightness.dark
+            ? CalloutPalette.dark
+            : CalloutPalette.light);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -228,8 +234,14 @@ class _BlankField extends StatelessWidget {
                   ? null
                   : Icon(
                       result! ? Icons.check : Icons.close,
-                      color: result! ? colors.primary : colors.error,
+                      // Correct is the callout green every other game uses;
+                      // `primary` is the signal red, all but identical to
+                      // `error` at 18px.
+                      color: result!
+                          ? palette.tip.foreground
+                          : palette.warning.foreground,
                       size: 18,
+                      semanticLabel: result! ? 'Correct' : 'Incorrect',
                     ),
               helperText: result == false ? 'Correct answer: $correctAnswer' : null,
             ),

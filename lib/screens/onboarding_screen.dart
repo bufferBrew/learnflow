@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:provider/provider.dart';
 
 import '../models/lesson.dart';
@@ -37,13 +38,33 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       _finish();
       return;
     }
+    // Reduced motion gets the same destination without the slide — this is
+    // the first screen a vestibular-sensitive user ever sees.
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.jumpToPage(_page + 1);
+      return;
+    }
     _controller.nextPage(duration: AppMotion.normal, curve: AppMotion.standard);
+  }
+
+  void _onPageChanged(int page) {
+    setState(() => _page = page);
+    // The dots are decoration; without this a screen-reader user swiping the
+    // intro has no cue that the page moved at all.
+    SemanticsService.sendAnnouncement(
+      View.of(context),
+      'Page ${page + 1} of $_pageCount',
+      Directionality.of(context),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final ColorScheme colors = Theme.of(context).colorScheme;
     final bool isLast = _page == _pageCount - 1;
+    final Duration motion = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : AppMotion.fast;
 
     return Scaffold(
       body: SafeArea(
@@ -62,7 +83,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Expanded(
               child: PageView(
                 controller: _controller,
-                onPageChanged: (int page) => setState(() => _page = page),
+                onPageChanged: _onPageChanged,
                 children: const <Widget>[
                   _WelcomePage(),
                   _ModesPage(),
@@ -79,21 +100,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
               child: Column(
                 children: <Widget>[
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                      for (int i = 0; i < _pageCount; i++)
-                        AnimatedContainer(
-                          duration: AppMotion.fast,
-                          margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
-                          width: i == _page ? 20 : 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: i == _page ? colors.primary : colors.outlineVariant,
-                            borderRadius: AppRadius.allXs,
+                  Semantics(
+                    label: 'Page ${_page + 1} of $_pageCount',
+                    excludeSemantics: true,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        for (int i = 0; i < _pageCount; i++)
+                          AnimatedContainer(
+                            duration: motion,
+                            margin: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
+                            width: i == _page ? 20 : 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: i == _page ? colors.primary : colors.outlineVariant,
+                              borderRadius: AppRadius.allXs,
+                            ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.lg),
                   SizedBox(

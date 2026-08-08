@@ -80,4 +80,79 @@ void main() {
     }
     expect(find.textContaining('due for review'), findsNothing);
   });
+
+  group('dashboard row touch target', () {
+    testWidgets('a dashboard row clears the app\'s minimum touch target at the default text scale', (
+      WidgetTester tester,
+    ) async {
+      await pumpApp(tester, const Size(1200, 900));
+
+      final double height = tester
+          .getSize(find.widgetWithText(InkWell, '0 of 11 achievements'))
+          .height;
+      expect(height, greaterThanOrEqualTo(44));
+    });
+
+    testWidgets('a dashboard row still clears the minimum touch target at a 1.3x text scale', (
+      WidgetTester tester,
+    ) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+      await pumpApp(tester, const Size(1200, 900));
+
+      final double height = tester
+          .getSize(find.widgetWithText(InkWell, '0 of 11 achievements'))
+          .height;
+      expect(height, greaterThanOrEqualTo(44));
+    });
+  });
+
+  group('daily goal ring text scaling', () {
+    Finder ringFinder() => find
+        .ancestor(of: find.byType(CircularProgressIndicator), matching: find.byType(SizedBox))
+        .first;
+
+    testWidgets('the goal ring is at least as large as its label at the default text scale', (
+      WidgetTester tester,
+    ) async {
+      await pumpApp(tester, const Size(1200, 900));
+
+      final Size ring = tester.getSize(ringFinder());
+      final Size label = tester.getSize(find.text('0/3'));
+
+      expect(ring.width, greaterThanOrEqualTo(label.width));
+      expect(ring.height, greaterThanOrEqualTo(label.height));
+    });
+
+    testWidgets('the goal ring is at least as large as its label at a 1.3x text scale', (
+      WidgetTester tester,
+    ) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+      await pumpApp(tester, const Size(1200, 900));
+
+      final Size ring = tester.getSize(ringFinder());
+      final Size label = tester.getSize(find.text('0/3'));
+
+      expect(ring.width, greaterThanOrEqualTo(label.width));
+      expect(ring.height, greaterThanOrEqualTo(label.height));
+    });
+
+    testWidgets('the goal ring is at least as large as its label at a 2.0x text scale', (
+      WidgetTester tester,
+    ) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+      await pumpApp(tester, const Size(1200, 900));
+
+      final Size ring = tester.getSize(ringFinder());
+      final Size label = tester.getSize(find.text('0/3'));
+
+      expect(ring.width, greaterThanOrEqualTo(label.width));
+      expect(ring.height, greaterThanOrEqualTo(label.height));
+    });
+  });
 }

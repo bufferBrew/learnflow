@@ -5,6 +5,7 @@ import '../models/game.dart';
 import '../models/lesson.dart';
 import '../state/game_play_provider.dart';
 import '../state/progress_provider.dart';
+import '../theme/color_schemes.dart';
 import '../theme/design_tokens.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/game_bug_hunt.dart';
@@ -197,13 +198,17 @@ class _GameGrid extends StatelessWidget {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final bool wide = constraints.maxWidth >= AppBreakpoints.wideContent;
+        // A card holds nothing but type, so its row height has to follow the OS
+        // text scale — a fixed extent cuts the instructions line mid-glyph once
+        // the user raises their font size.
+        const double baseCardExtent = 108;
         return GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: games.length,
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: wide ? 2 : 1,
-            mainAxisExtent: 108,
+            mainAxisExtent: MediaQuery.textScalerOf(context).scale(baseCardExtent),
             crossAxisSpacing: AppSpacing.sm,
             mainAxisSpacing: AppSpacing.sm,
           ),
@@ -235,6 +240,11 @@ class _GameCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme colors = theme.colorScheme;
+    final CalloutPalette palette =
+        theme.extension<CalloutPalette>() ??
+        (theme.brightness == Brightness.dark
+            ? CalloutPalette.dark
+            : CalloutPalette.light);
 
     return Material(
       color: colors.surfaceContainerLowest,
@@ -269,7 +279,11 @@ class _GameCard extends StatelessWidget {
                     Icon(
                       result! ? Icons.check_circle : Icons.cancel,
                       size: 16,
-                      color: result! ? colors.primary : colors.error,
+                      // Success is the callout green, not the signal red
+                      // `primary`, which reads as a failure beside `error`.
+                      color: result!
+                          ? palette.tip.foreground
+                          : palette.warning.foreground,
                       semanticLabel: result! ? 'Answered correctly' : 'Answered incorrectly',
                     ),
                 ],

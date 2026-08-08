@@ -153,6 +153,10 @@ class _TreeLeaf extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
 
     return Semantics(
+      // Without a container the selected state annotates an ancestor node and
+      // the label Text becomes a separate sibling, so the leaf is announced
+      // as an unnamed selected node followed by loose text.
+      container: true,
       selected: selected,
       child: InkWell(
         onTap: onTap,

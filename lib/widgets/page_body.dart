@@ -27,23 +27,23 @@ class PageBody extends StatelessWidget {
         final double horizontal = wide ? AppSpacing.xl : AppSpacing.md;
         final double width = math.min(constraints.maxWidth, maxWidth);
 
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: width),
-              child: CustomScrollView(
-                slivers: <Widget>[
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(
-                      horizontal,
-                      wide ? AppSpacing.xl : AppSpacing.lg,
-                      horizontal,
-                      AppSpacing.xxxl,
-                    ),
-                    sliver: SliverMainAxisGroup(slivers: slivers),
-                  ),
-                ],
+        // The scroll view spans the whole pane so a wheel or trackpad gesture
+        // anywhere over it scrolls the page — capping the scroll view itself
+        // left the remainder of a wide window inert, which reads as a frozen
+        // page. Only the content is capped, and because the sliver is laid out
+        // at the viewport's leading edge the reading edge stays left-aligned.
+        return CustomScrollView(
+          slivers: <Widget>[
+            SliverConstrainedCrossAxis(
+              maxExtent: width,
+              sliver: SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  horizontal,
+                  wide ? AppSpacing.xl : AppSpacing.lg,
+                  horizontal,
+                  AppSpacing.xxxl,
+                ),
+                sliver: SliverMainAxisGroup(slivers: slivers),
               ),
             ),
           ],

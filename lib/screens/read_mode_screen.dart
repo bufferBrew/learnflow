@@ -39,7 +39,8 @@ class ReadModeScreen extends StatefulWidget {
   State<ReadModeScreen> createState() => _ReadModeScreenState();
 }
 
-class _ReadModeScreenState extends State<ReadModeScreen> {
+class _ReadModeScreenState extends State<ReadModeScreen>
+    with AutomaticKeepAliveClientMixin<ReadModeScreen> {
   final ScrollController _controller = ScrollController();
   final GlobalKey _viewportKey = GlobalKey();
 
@@ -51,6 +52,16 @@ class _ReadModeScreenState extends State<ReadModeScreen> {
 
   List<GlobalKey> _buildSectionKeys() =>
       List<GlobalKey>.generate(_sections.length, (int _) => GlobalKey());
+
+  /// Read is the only pane worth keeping alive behind the lesson's tabs.
+  ///
+  /// Its panes are pages of a [PageView], so a glance at Practice would
+  /// otherwise dispose this state, take [_controller] with it, and drop the
+  /// learner back at the top of a long lesson on return. Deliberately not
+  /// applied to Listen — that pane's teardown is what stops its ticker — nor
+  /// to Play.
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -134,6 +145,9 @@ class _ReadModeScreenState extends State<ReadModeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Required by AutomaticKeepAliveClientMixin.
+    super.build(context);
+
     final Lesson lesson = widget.lesson;
     final ColorScheme colors = Theme.of(context).colorScheme;
 

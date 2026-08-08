@@ -221,25 +221,28 @@ class _LineRow extends StatelessWidget {
             ),
           ),
           if (!locked) ...<Widget>[
+            // No compact visual density: it takes a -4 adjustment off the
+            // theme's 44 minimum, leaving three undersized controls in a row.
             IconButton(
               onPressed: onMoveUp,
               icon: const Icon(Icons.keyboard_arrow_up),
               iconSize: 18,
               tooltip: 'Move up',
-              visualDensity: VisualDensity.compact,
             ),
             IconButton(
               onPressed: onMoveDown,
               icon: const Icon(Icons.keyboard_arrow_down),
               iconSize: 18,
               tooltip: 'Move down',
-              visualDensity: VisualDensity.compact,
             ),
             ReorderableDragStartListener(
               index: dragIndex,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxs),
-                child: Icon(Icons.drag_handle, size: 18, color: colors.onSurfaceVariant),
+              child: Semantics(
+                label: 'Reorder line $position',
+                child: SizedBox.square(
+                  dimension: AppDimensions.minTouchTarget,
+                  child: Icon(Icons.drag_handle, size: 18, color: colors.onSurfaceVariant),
+                ),
               ),
             ),
           ],

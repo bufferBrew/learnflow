@@ -503,6 +503,10 @@ class _SectionNavRow extends StatelessWidget {
     final ColorScheme colors = theme.colorScheme;
 
     return Semantics(
+      // Without a container the selected/button state annotates an ancestor
+      // node and the label Text becomes a separate sibling, so the row is
+      // announced as an unnamed button followed by loose text.
+      container: true,
       selected: selected,
       button: true,
       child: InkWell(

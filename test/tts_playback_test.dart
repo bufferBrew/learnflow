@@ -200,6 +200,57 @@ void main() {
       expect(playback.mode, PlaybackMode.simulated);
     });
 
+    test('an involuntary speak() failure flags TTS as unavailable', () async {
+      engine.failSpeak = true;
+      playback.play();
+      await flushSpeech();
+
+      expect(playback.mode, PlaybackMode.simulated);
+      expect(playback.ttsUnavailable, isTrue);
+    });
+
+    test('an involuntary stop() failure flags TTS as unavailable', () async {
+      engine.failStop = true;
+      playback.play();
+      await flush();
+
+      expect(playback.mode, PlaybackMode.simulated);
+      expect(playback.ttsUnavailable, isTrue);
+    });
+
+    test(
+      'choosing simulated mode deliberately does not flag TTS as unavailable',
+      () async {
+        playback.play();
+        await flush();
+
+        playback.toggleMode();
+        await flush();
+
+        expect(playback.mode, PlaybackMode.simulated);
+        expect(
+          playback.ttsUnavailable,
+          isFalse,
+          reason: 'a deliberate choice must not be reported as a device failure',
+        );
+      },
+    );
+
+    test(
+      'load() resets a stale ttsUnavailable flag so a past failure does not latch forever',
+      () async {
+        engine.failSpeak = true;
+        playback.play();
+        await flushSpeech();
+        expect(playback.ttsUnavailable, isTrue);
+
+        engine.failSpeak = false;
+        playback.load(sampleLesson.id, scriptWith(segmentsOf(PodcastVariant.standard)));
+
+        expect(playback.ttsUnavailable, isFalse);
+      },
+    );
+
     test('toggleMode switches to simulated and stops speech', () async {
       playback.play();
       await flush();

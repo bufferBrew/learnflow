@@ -34,6 +34,35 @@ class LessonRow extends StatelessWidget {
 
   final bool showBookmark;
 
+  /// Toggles the bookmark, and on *removal* offers an undo.
+  ///
+  /// On the Bookmarks screen the row leaves the list on the same frame, so a
+  /// mis-tap would otherwise destroy a saved item with no confirmation and no
+  /// way back — the row that named the lesson is already gone. Adding needs no
+  /// snackbar: the filled icon stays on screen and says so itself.
+  void _toggleBookmark(BuildContext context) {
+    final BookmarkProvider bookmarks = context.read<BookmarkProvider>();
+    final bool isRemoval = bookmarks.isBookmarked(lesson.id);
+    // Resolved before the toggle: notifying can take this row out of the tree,
+    // and with it the context the messenger would be looked up from.
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
+
+    bookmarks.toggle(lesson.id);
+    if (!isRemoval) return;
+
+    // The undo is time-limited, so it must not queue behind another snackbar.
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('Bookmark removed: ${lesson.title}'),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () => bookmarks.toggle(lesson.id),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -115,7 +144,7 @@ class LessonRow extends StatelessWidget {
             if (showBookmark) ...<Widget>[
               const SizedBox(width: AppSpacing.xs),
               IconButton(
-                onPressed: () => context.read<BookmarkProvider>().toggle(lesson.id),
+                onPressed: () => _toggleBookmark(context),
                 icon: Icon(
                   isBookmarked ? Icons.bookmark : Icons.bookmark_border,
                   color: isBookmarked ? colors.primary : colors.onSurfaceVariant,

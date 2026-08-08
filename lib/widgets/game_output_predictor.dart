@@ -7,6 +7,10 @@ import '../theme/design_tokens.dart';
 import 'code_block.dart';
 import 'game_feedback_banner.dart';
 
+/// What an option means once the round is settled. Drives colour, glyph and
+/// wording together, so the outcome is never carried by hue alone.
+enum _OptionMark { none, correct, yourAnswer }
+
 /// Predict what a snippet prints, from four multiple-choice options.
 ///
 /// One tap settles it: the option list locks the instant a choice is made,
@@ -38,13 +42,6 @@ class _GameOutputPredictorState extends State<GameOutputPredictor> {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final CalloutPalette palette =
-        theme.extension<CalloutPalette>() ??
-        (theme.brightness == Brightness.dark
-            ? CalloutPalette.dark
-            : CalloutPalette.light);
-
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -57,11 +54,11 @@ class _GameOutputPredictorState extends State<GameOutputPredictor> {
             letter: _letter(i),
             text: widget.game.options[i],
             enabled: !_checked,
-            tone: !_checked
-                ? null
+            mark: !_checked
+                ? _OptionMark.none
                 : (i == widget.game.correctIndex
-                      ? palette.tip
-                      : (i == _selected ? palette.warning : null)),
+                      ? _OptionMark.correct
+                      : (i == _selected ? _OptionMark.yourAnswer : _OptionMark.none)),
             onTap: () => _choose(i),
           ),
         ],
@@ -79,20 +76,43 @@ class _Option extends StatelessWidget {
     required this.letter,
     required this.text,
     required this.enabled,
-    required this.tone,
+    required this.mark,
     required this.onTap,
   });
 
   final String letter;
   final String text;
   final bool enabled;
-  final CalloutColors? tone;
+  final _OptionMark mark;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme colors = theme.colorScheme;
+    final CalloutPalette palette =
+        theme.extension<CalloutPalette>() ??
+        (theme.brightness == Brightness.dark
+            ? CalloutPalette.dark
+            : CalloutPalette.light);
+
+    final CalloutColors? tone = switch (mark) {
+      _OptionMark.none => null,
+      _OptionMark.correct => palette.tip,
+      _OptionMark.yourAnswer => palette.warning,
+    };
+    // Green-vs-amber alone cannot say which of two highlighted options was the
+    // right one, so each carries a glyph and a word as well.
+    final IconData? glyph = switch (mark) {
+      _OptionMark.none => null,
+      _OptionMark.correct => Icons.check_circle_outline,
+      _OptionMark.yourAnswer => Icons.cancel_outlined,
+    };
+    final String markLabel = switch (mark) {
+      _OptionMark.none => '',
+      _OptionMark.correct => 'Correct',
+      _OptionMark.yourAnswer => 'Your answer',
+    };
 
     return Material(
       color: tone?.background ?? colors.surfaceContainerLowest,
@@ -123,7 +143,9 @@ class _Option extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.xs),
-              Expanded(
+              // Flexible, not Expanded: long monospace options give the width
+              // back to the marker instead of pushing it off the row.
+              Flexible(
                 child: Text(
                   text,
                   style: AppTypeScale.mono.copyWith(
@@ -131,6 +153,17 @@ class _Option extends StatelessWidget {
                   ),
                 ),
               ),
+              if (glyph != null) ...<Widget>[
+                const SizedBox(width: AppSpacing.xs),
+                Icon(glyph, size: 16, color: tone?.foreground),
+                const SizedBox(width: AppSpacing.xxs),
+                Text(
+                  markLabel,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: tone?.foreground,
+                  ),
+                ),
+              ],
             ],
           ),
         ),

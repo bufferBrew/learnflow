@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import '../models/achievement.dart';
 import '../state/achievement_provider.dart';
 import '../state/streak_provider.dart';
+import '../theme/color_schemes.dart';
 import '../theme/design_tokens.dart';
 import '../widgets/page_body.dart';
 import '../widgets/section_header.dart';
@@ -114,9 +115,17 @@ class _AchievementTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ColorScheme colors = theme.colorScheme;
+    final CalloutPalette palette =
+        theme.extension<CalloutPalette>() ??
+        (theme.brightness == Brightness.dark
+            ? CalloutPalette.dark
+            : CalloutPalette.light);
     final Color foreground = unlocked ? colors.onSurface : colors.onSurfaceVariant;
 
     return Semantics(
+      // The tile's own label states the title, state and description; without
+      // this the child Text nodes repeat all of it a second time.
+      excludeSemantics: true,
       label: unlocked
           ? '${achievement.title}, unlocked. ${achievement.description}'
           : '${achievement.title}, locked. ${achievement.description}',
@@ -148,7 +157,9 @@ class _AchievementTile extends StatelessWidget {
               ),
             ),
             if (unlocked)
-              Icon(Icons.check_circle, size: 18, color: colors.primary)
+              // Success is the callout green, not the signal red `primary` —
+              // red reads as failure beside the locked/error styling.
+              Icon(Icons.check_circle, size: 18, color: palette.tip.foreground)
             else
               Icon(Icons.lock_outline, size: 18, color: colors.onSurfaceVariant),
           ],

@@ -1,10 +1,18 @@
+import 'dart:ui' show Tristate;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:learnflow/app.dart';
 import 'package:learnflow/screens/practice_mode_screen.dart';
 import 'package:learnflow/screens/read_mode_screen.dart';
 import 'package:learnflow/screens/review_mode_screen.dart';
 import 'package:learnflow/widgets/content_tree.dart';
+
+/// Whether [data] is marked `selected`, via the non-deprecated
+/// [SemanticsData.flagsCollection] rather than the deprecated
+/// `SemanticsData.hasFlag`.
+bool _isSelected(SemanticsData data) => data.flagsCollection.isSelected == Tristate.isTrue;
 
 /// Sizes the test surface in logical pixels and restores it afterwards.
 Future<void> _pumpAppAt(WidgetTester tester, Size size) async {
@@ -171,7 +179,11 @@ void main() {
     await tester.tap(find.text('Variables & Data Types'));
     await tester.pumpAndSettle();
 
-    // All four tabs stay reachable at this width.
+    // Five tabs no longer fit 320px at full label width, so the bar scrolls
+    // rather than truncating every label. Every tab stays reachable — the
+    // later ones after a scroll, which is what the peeking edge tab advertises.
+    await tester.ensureVisible(find.text('Review'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Review'));
     await tester.pumpAndSettle();
     expect(find.byType(ReviewModeScreen), findsOneWidget);
@@ -226,4 +238,42 @@ void main() {
     expect(find.text('Results'), findsOneWidget);
     expect(find.text('Variables & Data Types'), findsWidgets);
   });
+
+  testWidgets(
+    'a section nav row is one semantics node carrying both its label and the selected state',
+    (WidgetTester tester) async {
+      // On desktop the sidebar sits beside the content pane's own nested
+      // Navigator, and flutter_test's semantics tooling cannot see past that
+      // boundary into a sibling subtree (verified against a minimal
+      // reproduction of the same shape) — the mobile drawer renders the same
+      // `_NavigationPanel` through a Scaffold drawer slot instead, which does
+      // not have that limitation.
+      final SemanticsHandle semanticsHandle = tester.ensureSemantics();
+      await _pumpAppAt(tester, const Size(500, 900));
+      await tester.tap(find.byTooltip('Open navigation menu'));
+      await tester.pumpAndSettle();
+
+      final Finder drawer = find.byKey(const Key('shell-drawer-panel'));
+
+      final Finder topicsRow = find.descendant(
+        of: drawer,
+        matching: find.bySemanticsLabel('Topics'),
+      );
+      expect(topicsRow, findsOneWidget);
+      SemanticsData data = tester.getSemantics(topicsRow).getSemanticsData();
+      expect(data.label, 'Topics');
+      // Topics is the section shown on launch.
+      expect(_isSelected(data), isTrue);
+
+      final Finder bookmarksRow = find.descendant(
+        of: drawer,
+        matching: find.bySemanticsLabel('Bookmarks'),
+      );
+      data = tester.getSemantics(bookmarksRow).getSemanticsData();
+      expect(data.label, 'Bookmarks');
+      expect(_isSelected(data), isFalse);
+
+      semanticsHandle.dispose();
+    },
+  );
 }

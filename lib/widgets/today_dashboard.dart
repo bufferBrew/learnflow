@@ -142,19 +142,24 @@ class _GoalRing extends StatelessWidget {
     final ColorScheme colors = Theme.of(context).colorScheme;
     final double fraction = streak.todayGoalFraction;
 
+    // The label inside the ring scales with the OS text setting, so the ring
+    // has to scale with it or the count is clipped by its own circle. One value
+    // sizes both the box and the indicator that fills it.
+    final double side = MediaQuery.textScalerOf(
+      context,
+    ).scale(AppDimensions.minTouchTarget);
+
     return Semantics(
       label:
           'Daily goal: ${streak.todayCount} of ${StreakProvider.dailyGoal} modes today',
       child: ExcludeSemantics(
         child: SizedBox(
-          width: 44,
-          height: 44,
+          width: side,
+          height: side,
           child: Stack(
             alignment: Alignment.center,
             children: <Widget>[
-              SizedBox(
-                width: 44,
-                height: 44,
+              Positioned.fill(
                 child: CircularProgressIndicator(
                   value: fraction,
                   strokeWidth: AppStroke.emphasis,
@@ -189,22 +194,27 @@ class _DashboardRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: AppRadius.allXs,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-        child: Row(
-          children: <Widget>[
-            Icon(icon, size: 18, color: colors.onSurfaceVariant),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Text(
-                label,
-                style: theme.textTheme.bodyMedium,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+      child: ConstrainedBox(
+        // These rows are the dashboard's primary shortcuts, so they hold the
+        // same minimum tap height as every other list row in the app.
+        constraints: const BoxConstraints(minHeight: AppDimensions.minTouchTarget),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+          child: Row(
+            children: <Widget>[
+              Icon(icon, size: 18, color: colors.onSurfaceVariant),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Text(
+                  label,
+                  style: theme.textTheme.bodyMedium,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
-            Icon(Icons.chevron_right, size: 18, color: colors.onSurfaceVariant),
-          ],
+              Icon(Icons.chevron_right, size: 18, color: colors.onSurfaceVariant),
+            ],
+          ),
         ),
       ),
     );

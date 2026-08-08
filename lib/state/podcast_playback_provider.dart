@@ -18,7 +18,9 @@ enum PlaybackMode { tts, simulated }
 /// to a [TtsEngine] as the position enters it, at a rate matching [speed].
 /// Any failure — no engine on this platform, an unsupported call on web —
 /// drops [mode] to [PlaybackMode.simulated] and playback carries on exactly
-/// as it always did, timing only.
+/// as it always did, timing only. That involuntary drop also raises
+/// [ttsUnavailable], which is what lets the UI say a voice was attempted and
+/// could not start, rather than describing the fallback as if it were chosen.
 class PodcastPlaybackProvider extends ChangeNotifier {
   PodcastPlaybackProvider({TtsEngine? ttsEngine, ChimePlayer? chimePlayer})
     : _ttsEngine = ttsEngine ?? FlutterTtsEngine(),
@@ -66,6 +68,7 @@ class PodcastPlaybackProvider extends ChangeNotifier {
   bool _isPlaying = false;
   double _speed = 0.8;
   PlaybackMode _mode = PlaybackMode.tts;
+  bool _ttsUnavailable = false;
 
   String? get lessonId => _lessonId;
 
@@ -80,6 +83,15 @@ class PodcastPlaybackProvider extends ChangeNotifier {
   double get speed => _speed;
 
   PlaybackMode get mode => _mode;
+
+  /// True when [PlaybackMode.simulated] was not chosen but fallen back to: the
+  /// engine was asked to speak and could not.
+  ///
+  /// The UI needs this to tell two identical-looking states apart. Without it
+  /// the banner describes simulated playback as if the learner had picked it,
+  /// and the mode toggle stays live on a device that will only ever fail
+  /// again — so tapping it appears to work, then silently reverts.
+  bool get ttsUnavailable => _ttsUnavailable;
 
   ScriptVariant? get currentScript => _script?.variantFor(_variant);
 
@@ -112,6 +124,11 @@ class PodcastPlaybackProvider extends ChangeNotifier {
     _script = script;
     _currentTimeMs = 0;
     _isPlaying = false;
+    // A new script is a fresh attempt: one failed engine call must not condemn
+    // the rest of the session. Deliberately after the identical-script guard
+    // above, so re-entering the same lesson does not clear a finding that
+    // still holds.
+    _ttsUnavailable = false;
     _stopTicker();
     _syncSpeech();
     notifyListeners();
@@ -396,9 +413,14 @@ class PodcastPlaybackProvider extends ChangeNotifier {
     }
   }
 
+  /// The involuntary path into [PlaybackMode.simulated] — only ever reached
+  /// from a failed engine call, never from the user picking simulated, which
+  /// goes through [setMode] and is already simulated by the time any stop()
+  /// failure lands here.
   void _switchToSimulated() {
     if (_disposed || _mode == PlaybackMode.simulated) return;
     _mode = PlaybackMode.simulated;
+    _ttsUnavailable = true;
     notifyListeners();
   }
 
